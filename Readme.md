@@ -72,7 +72,7 @@ Also the specification itself is not always clear and sometimes even contradicto
 So i had to make some decisions on how to handle certain cases.
 I tried to follow the specification as closely as possible, but there are some cases where i had to deviate from it.
 For example, the specification does not define how to handle merge keys in YAML 1.2, but i decided to implement it anyway, because it is a useful feature.
-This means that this library is fully compliant with the YAML specification and probably never will be 100% compliant.
+This means that this library is not fully compliant with the YAML specification and probably never will be 100% compliant.
 Use at your own risk.
 But i make it publicly available in the hope that it might be useful to someone.
 
