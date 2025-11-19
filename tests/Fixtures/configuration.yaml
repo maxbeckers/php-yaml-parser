@@ -1,0 +1,21 @@
+---
+database:
+  host: !env DATABASE_HOST:localhost
+  description: |
+    Main "database" server
+    Version: 12.3
+  port: 5432
+  credentials: &db_creds
+    username: admin
+    password: "secret"
+
+cache:
+  credentials: *db_creds
+
+servers:
+  - name: web1
+    ip: 192.168.1.1
+  - name: web2
+    ip: 192.168.1.2
+
+settings: {debug: true, timeout: 30}
