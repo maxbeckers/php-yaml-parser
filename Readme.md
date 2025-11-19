@@ -56,6 +56,8 @@ Tag Processor (allows also custom tag handling)
     ↓
 Resolver (anchors/aliases)
     ↓
+Resolver (merge keys)
+    ↓
 Serializer (to PHP ArrayObject)
 ```
 
