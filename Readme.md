@@ -4,7 +4,7 @@ A PHP implementation of a YAML parser built for learning and understanding the Y
 
 ## Features
 
-- **Comprehensive YAML Support**: Full support for YAML 1.2 specification
+- **YAML Support**: Support for the YAML 1.2 spec (not 100% supported)
   - Includes merge key support (even though not defined in YAML 1.2 spec)
 - **Extensible Tag System**: Define and register custom tags with ease
 - **Anchor and Alias Support**: Automatic resolution of anchors and aliases
