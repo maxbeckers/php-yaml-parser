@@ -21,17 +21,17 @@ composer require maxbeckers/php-yaml-parser
 ### Basic Parsing
 
 ```php
-use YamlParser\Parser;
+use MaxBeckers\YamlParser\YamlParser;
 
-$yaml = new Parser();
-$data = $yaml->parse(file_get_contents('config.yaml'));
+$yamlParser = new YamlParser();
+$data = $yamlParser->parseFile('config.yaml');
 ```
 
 ### Custom Tag Handlers
 
 ```php
 // Register custom tag handler for environment variables
-$yaml->getTagRegistry()->register(
+$yamlParser->getTagRegistry()->register(
     new CustomTagHandler('!env', function($value) {
         return getenv($value) ?: $value;
     })
