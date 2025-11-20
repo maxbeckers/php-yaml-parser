@@ -8,9 +8,9 @@ use MaxBeckers\YamlParser\Exception\ParserException;
 use MaxBeckers\YamlParser\Lexer\Token;
 use MaxBeckers\YamlParser\Node\NodeMetadata;
 use MaxBeckers\YamlParser\Node\ScalarNode;
-use MaxBeckers\YamlParser\Rule\Format\NumberType;
-use MaxBeckers\YamlParser\Rule\FormatHelper;
-use MaxBeckers\YamlParser\Rule\Version;
+use MaxBeckers\YamlParser\Format\NumberType;
+use MaxBeckers\YamlParser\Format\FormatHelper;
+use MaxBeckers\YamlParser\Format\Version;
 
 final class ScalarParser implements TokenParserInterface
 {

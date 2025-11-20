@@ -1,6 +1,6 @@
 <?php
 
-namespace MaxBeckers\YamlParser\Rule\Document;
+namespace MaxBeckers\YamlParser\Format;
 
 enum DirectiveType: string
 {

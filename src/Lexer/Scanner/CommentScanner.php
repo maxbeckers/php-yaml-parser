@@ -3,7 +3,7 @@
 namespace MaxBeckers\YamlParser\Lexer\Scanner;
 
 use MaxBeckers\YamlParser\Lexer\LexerContext;
-use MaxBeckers\YamlParser\Rule\Version;
+use MaxBeckers\YamlParser\Format\Version;
 
 final class CommentScanner extends AbstractScanner
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace MaxBeckers\YamlParser\Rule\Tag;
+namespace MaxBeckers\YamlParser\Format;
 
 enum TagType
 {

@@ -9,7 +9,7 @@ use MaxBeckers\YamlParser\Lexer\TokenType;
 use MaxBeckers\YamlParser\Node\DocumentNode;
 use MaxBeckers\YamlParser\Node\NodeMetadata;
 use MaxBeckers\YamlParser\Node\YamlNode;
-use MaxBeckers\YamlParser\Rule\Version;
+use MaxBeckers\YamlParser\Format\Version;
 
 final class Parser
 {

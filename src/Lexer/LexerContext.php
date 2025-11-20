@@ -3,7 +3,7 @@
 namespace MaxBeckers\YamlParser\Lexer;
 
 use MaxBeckers\YamlParser\Api\TokenInterface;
-use MaxBeckers\YamlParser\Rule\Version;
+use MaxBeckers\YamlParser\Format\Version;
 
 final class LexerContext
 {

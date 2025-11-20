@@ -6,8 +6,8 @@ use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Lexer\ContextMode;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Lexer\TokenType;
-use MaxBeckers\YamlParser\Rule\Document\DirectiveType;
-use MaxBeckers\YamlParser\Rule\Version;
+use MaxBeckers\YamlParser\Format\DirectiveType;
+use MaxBeckers\YamlParser\Format\Version;
 
 final class DirectiveScanner extends AbstractScanner
 {

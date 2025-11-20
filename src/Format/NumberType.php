@@ -1,6 +1,6 @@
 <?php
 
-namespace MaxBeckers\YamlParser\Rule\Format;
+namespace MaxBeckers\YamlParser\Format;
 
 enum NumberType
 {

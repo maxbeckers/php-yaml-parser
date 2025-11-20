@@ -7,9 +7,9 @@ use MaxBeckers\YamlParser\Lexer\ContextMode;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Lexer\TokenType;
 use MaxBeckers\YamlParser\Resolver\Tag\VerbatimTagValidator;
-use MaxBeckers\YamlParser\Rule\Document\DirectiveType;
-use MaxBeckers\YamlParser\Rule\FormatHelper;
-use MaxBeckers\YamlParser\Rule\Tag\TagType;
+use MaxBeckers\YamlParser\Format\DirectiveType;
+use MaxBeckers\YamlParser\Format\FormatHelper;
+use MaxBeckers\YamlParser\Format\TagType;
 
 class TagScanner extends AbstractScanner
 {

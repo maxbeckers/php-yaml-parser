@@ -1,6 +1,6 @@
 <?php
 
-namespace MaxBeckers\YamlParser\Rule;
+namespace MaxBeckers\YamlParser\Format;
 
 class FormatHelper
 {

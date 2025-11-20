@@ -5,7 +5,7 @@ namespace MaxBeckers\YamlParser\Lexer\Scanner;
 use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Lexer\TokenType;
-use MaxBeckers\YamlParser\Rule\FormatHelper;
+use MaxBeckers\YamlParser\Format\FormatHelper;
 
 final class LiteralBlockScanner extends AbstractScanner
 {
