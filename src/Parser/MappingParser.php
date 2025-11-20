@@ -69,13 +69,7 @@ final class MappingParser implements TokenParserInterface
             }
             Parser::advance($context);
 
-            if ($context->isExplicitKey() && Parser::peek($context)->isScalar()) {
-                $value = ScalarParser::parse($context, $metadata);
-                if (Parser::peek($context)->is(TokenType::KEY_INDICATOR)) {
-                    $mapping->addPair($key, $value);
-                    break;
-                }
-            } elseif (Parser::peek($context)->isScalar() && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR) && !$context->isExplicitKey()) {
+            if (Parser::peek($context)->isScalar() && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR) && !$context->isExplicitKey()) {
                 $value = new ScalarNode(null);
             } else {
                 $isIndented = false;

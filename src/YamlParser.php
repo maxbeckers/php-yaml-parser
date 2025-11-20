@@ -57,7 +57,7 @@ final class YamlParser
         return $serialized;
     }
 
-    public function parseFile(string $filename, bool $asObject = false): mixed
+    public function parseFile(string $filename, bool $stripWrapperOnSingleItem = false): mixed
     {
         if (!file_exists($filename)) {
             throw new \InvalidArgumentException("File not found: {$filename}");
@@ -65,7 +65,7 @@ final class YamlParser
 
         $yaml = file_get_contents($filename);
 
-        return $this->parse($yaml, $asObject);
+        return $this->parse($yaml, $stripWrapperOnSingleItem);
     }
 
     public function getTagRegistry(): TagRegistry

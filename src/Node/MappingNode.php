@@ -6,8 +6,6 @@ use MaxBeckers\YamlParser\Api\NodeInterface;
 
 final class MappingNode extends AbstractNode
 {
-    public const TYPE = 'mapping';
-
     /**
      * @param array<MappingNodeItem> $mappingNodeItems
      */
@@ -16,11 +14,6 @@ final class MappingNode extends AbstractNode
         NodeMetadata $metadata = new NodeMetadata()
     ) {
         parent::__construct($metadata);
-    }
-
-    public function getType(): string
-    {
-        return self::TYPE;
     }
 
     public function addMappingItem(MappingNodeItem $item): void
