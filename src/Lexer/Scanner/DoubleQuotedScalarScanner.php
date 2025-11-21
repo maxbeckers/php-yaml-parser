@@ -87,14 +87,13 @@ final class DoubleQuotedScalarScanner extends AbstractScanner
     {
         return preg_replace_callback(
             '/\\\\(?:' .
-            '([\\\\\"\/0abefnrtv NL_P])|' .  // Group 1: simple escapes
-            'x([0-9a-fA-F]{2})|' .            // Group 2: \xNN
-            'u([0-9a-fA-F]{4})|' .            // Group 3: \uNNNN
-            'U([0-9a-fA-F]{8})|' .            // Group 4: \UNNNNNNNN
-            '(.)' .                            // Group 5: INVALID - any other char
+            '([\\\\\"\/0abefnrtv NL_P])|' .
+            'x([0-9a-fA-F]{2})|' .
+            'u([0-9a-fA-F]{4})|' .
+            'U([0-9a-fA-F]{8})|' .
+            '(.)' .
             ')/',
             function ($m) use ($context) {
-                // Check for invalid escape sequence FIRST
                 if (!empty($m[5])) {
                     throw new LexerException(
                         sprintf(
@@ -106,7 +105,7 @@ final class DoubleQuotedScalarScanner extends AbstractScanner
                     );
                 }
 
-                if (!empty($m[1])) {
+                if (isset($m[1])) {
                     switch ($m[1]) {
                         case '\\': return "\x5C";
                         case '"':  return "\x22";

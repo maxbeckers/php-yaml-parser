@@ -14,7 +14,7 @@ final class AliasScanner extends AbstractScanner
             return false;
         }
 
-        $charsTillEoAlias = $context->getNumberOfCharsTill($context->isInFlow() ? "\n\r ," : "\n\r ");
+        $charsTillEoAlias = $context->getNumberOfCharsTill($context->isInFlow() ? "\n\r ,}]" : "\n\r ");
 
         if ($charsTillEoAlias === 0) {
             throw new LexerException(

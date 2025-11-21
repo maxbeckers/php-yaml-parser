@@ -3,6 +3,7 @@
 namespace MaxBeckers\YamlParser\Tests;
 
 use MaxBeckers\YamlParser\YamlParser;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class YamlParserFileTest extends TestCase
@@ -23,9 +24,7 @@ class YamlParserFileTest extends TestCase
         $this->assertEquals($jsonParsed, $yamlParsed);
     }
 
-    /**
-     * @dataProvider yamlFilesProvider
-     */
+    #[DataProvider('yamlFilesProvider')]
     public function testParseFile(string $file)
     {
         // Uncomment to see which file is being parsed

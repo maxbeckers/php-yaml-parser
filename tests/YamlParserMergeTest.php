@@ -44,8 +44,6 @@ YAML;
 - &BIG { r: 10 }
 - &SMALL { r: 1 }
 
-# All the following maps are equal:
-
 - # Explicit keys
   x: 1
   y: 2
@@ -132,7 +130,7 @@ prod: &prod_settings
 
 server1:
   host: example.com
-  <<: [ *default_settings, *prod_settings ]
+  <<: [*default_settings,*prod_settings]
 YAML;
 
         $yaml = $this->yamlParser->parse($input);

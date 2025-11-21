@@ -80,7 +80,7 @@ final class ScalarParser implements TokenParserInterface
 
         $value = $token->value;
 
-        if (strlen($value) > 1000) {
+        if ($value !== null && strlen($value) > 1000) {
             throw new ParserException(
                 'Mapping keys cannot be longer than 1000 characters',
                 $token
