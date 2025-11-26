@@ -40,16 +40,8 @@ class YamlTestSuiteTest extends TestCase
 
     public static function yamlTestSuiteProvider(): array
     {
-        exec('which make 2>/dev/null', $out, $code);
-        if ($code !== 0 && !file_exists(__DIR__ . \DIRECTORY_SEPARATOR . 'yaml-test-suite' . \DIRECTORY_SEPARATOR . 'data')) {
-            self::markTestSkipped('Make command not found, skipping YAML Test Suite setup.');
-        }
-
-        if ($code === 0) {
-            exec('make -C ' . escapeshellarg(__DIR__ . \DIRECTORY_SEPARATOR . 'yaml-test-suite') . ' data', $output, $makeCode);
-            if ($makeCode !== 0) {
-                self::markTestSkipped('Failed to set up YAML Test Suite using make command.');
-            }
+        if (!file_exists(__DIR__ . \DIRECTORY_SEPARATOR . 'yaml-test-suite' . \DIRECTORY_SEPARATOR . 'data')) {
+            self::markTestSkipped('YAML Test Suite data folder not found. Please run "make data-update" to download the test suite.');
         }
 
         $files = glob(__DIR__ . \DIRECTORY_SEPARATOR . 'yaml-test-suite' . \DIRECTORY_SEPARATOR . 'data' . \DIRECTORY_SEPARATOR . '*' . \DIRECTORY_SEPARATOR . 'in.yaml');
