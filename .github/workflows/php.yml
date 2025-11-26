@@ -5,6 +5,7 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,6 +17,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
 
     - name: Validate composer.json and composer.lock
       run: composer validate --strict
@@ -31,6 +35,9 @@ jobs:
 
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
+
+    - name: Build YAML test suite data
+      run: make -C tests/yaml-test-suite data
 
     - name: Run test suite
       run: php ./vendor/bin/phpunit
