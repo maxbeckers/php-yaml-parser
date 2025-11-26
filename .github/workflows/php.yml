@@ -18,7 +18,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        submodules: true
+        submodules: recursive
+        fetch-depth: 0
 
     - name: Validate composer.json and composer.lock
       run: composer validate --strict
