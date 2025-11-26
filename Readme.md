@@ -85,6 +85,7 @@ But i make it publicly available in the hope that it might be useful to someone.
 - [ ] Optimize handling for special cases
 - [ ] Add configurable options for parsing behavior
 - [ ] Improve metadata handling for mappings and sequences
+- [ ] Make all tests from the [YAML test suite](https://github.com/yaml/yaml-test-suite.git) pass (currently 69/333 are skipped)
 
 ## Contributing
 
