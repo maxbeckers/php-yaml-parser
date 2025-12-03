@@ -2,6 +2,6 @@
 
 namespace MaxBeckers\YamlParser\Exception;
 
-class ResolverException extends \RuntimeException
+class ResolverException extends YamlParserException
 {
 }

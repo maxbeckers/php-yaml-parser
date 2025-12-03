@@ -4,11 +4,10 @@ A PHP implementation of a YAML parser built for learning and understanding the Y
 
 ## Features
 
-- **YAML Support**: Support for the YAML 1.2 spec (not 100% supported)
-  - Includes merge key support (even though not defined in YAML 1.2 spec)
 - **Extensible Tag System**: Define and register custom tags with ease
 - **Anchor and Alias Support**: Automatic resolution of anchors and aliases
 - **Error Handling**: Detailed error messages with line and column information
+- **Merge Key Support**: Implements merge keys for mappings even though not defined in YAML 1.2
 
 ## Installation
 
@@ -85,7 +84,7 @@ But i make it publicly available in the hope that it might be useful to someone.
 - [ ] Optimize handling for special cases
 - [ ] Add configurable options for parsing behavior
 - [ ] Improve metadata handling for mappings and sequences
-- [ ] Make all tests from the [YAML test suite](https://github.com/yaml/yaml-test-suite.git) pass (currently 69/333 are skipped)
+- [ ] Make all tests from the [YAML test suite](https://github.com/yaml/yaml-test-suite.git) pass (currently 152/402 are skipped)
 
 ## Contributing
 

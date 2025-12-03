@@ -4,7 +4,7 @@ namespace MaxBeckers\YamlParser\Exception;
 
 use MaxBeckers\YamlParser\Api\TokenInterface;
 
-class ParserException extends \RuntimeException
+class ParserException extends YamlParserException
 {
     public function __construct(
         string $message,

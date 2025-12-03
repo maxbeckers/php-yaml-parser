@@ -2,6 +2,6 @@
 
 namespace MaxBeckers\YamlParser\Exception;
 
-class LexerException extends \RuntimeException
+class LexerException extends YamlParserException
 {
 }
