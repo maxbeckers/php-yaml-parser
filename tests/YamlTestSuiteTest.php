@@ -66,6 +66,7 @@ class YamlTestSuiteTest extends TestCase
 
         $testDirs = [];
         foreach ($shortcodeDirs as $shortcodeDir) {
+            echo 'Found shortcode dir: ' . $shortcodeDir . PHP_EOL;
             $shortcode = basename($shortcodeDir);
 
             if (file_exists($shortcodeDir . \DIRECTORY_SEPARATOR . 'in.yaml')) {
@@ -73,6 +74,7 @@ class YamlTestSuiteTest extends TestCase
             } else {
                 $subDirs = glob($shortcodeDir . \DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR);
                 foreach ($subDirs as $subDir) {
+                    echo 'Found sub dir: ' . $subDir . PHP_EOL;
                     if (file_exists($subDir . \DIRECTORY_SEPARATOR . 'in.yaml')) {
                         $shortcodeSub = $shortcode . '-' . basename($subDir);
                         $testDirs[] = [$shortcodeSub, $subDir];
