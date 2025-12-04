@@ -66,15 +66,16 @@ class YamlTestSuiteTest extends TestCase
 
         $testDirs = [];
         foreach ($shortcodeDirs as $shortcodeDir) {
-            echo 'Found shortcode dir: ' . $shortcodeDir . PHP_EOL;
             $shortcode = basename($shortcodeDir);
+            if (in_array($shortcode, ['name', 'tags'], true)) {
+                continue;
+            }
 
             if (file_exists($shortcodeDir . \DIRECTORY_SEPARATOR . 'in.yaml')) {
                 $testDirs[] = [$shortcode, $shortcodeDir];
             } else {
                 $subDirs = glob($shortcodeDir . \DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR);
                 foreach ($subDirs as $subDir) {
-                    echo 'Found sub dir: ' . $subDir . PHP_EOL;
                     if (file_exists($subDir . \DIRECTORY_SEPARATOR . 'in.yaml')) {
                         $shortcodeSub = $shortcode . '-' . basename($subDir);
                         $testDirs[] = [$shortcodeSub, $subDir];
