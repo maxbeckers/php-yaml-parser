@@ -56,6 +56,7 @@ class YamlTestSuiteTest extends TestCase
         if (!$isErrorExpected) {
             if (is_scalar($yaml)) {
                 $this->assertIsScalar($yaml);
+
                 return;
             }
 
