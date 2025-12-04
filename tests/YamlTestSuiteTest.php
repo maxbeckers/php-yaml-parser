@@ -67,6 +67,9 @@ class YamlTestSuiteTest extends TestCase
         $testDirs = [];
         foreach ($shortcodeDirs as $shortcodeDir) {
             $shortcode = basename($shortcodeDir);
+            if (in_array($shortcode, ['name', 'tags'], true)) {
+                continue;
+            }
 
             if (file_exists($shortcodeDir . \DIRECTORY_SEPARATOR . 'in.yaml')) {
                 $testDirs[] = [$shortcode, $shortcodeDir];
