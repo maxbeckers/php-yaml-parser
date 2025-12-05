@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 class YamlTestSuiteTest extends TestCase
 {
-    private static array $SKIPPED_TESTS = [
+    private const SKIPPED_TESTS = [
         '236B', '26DV', '2AUY', '2CMS', '2EBW', '2G84-00', '2G84-01', '2JQS', '2LFX', '2XXW', '3HFZ', '3RLN-01', '3RLN-04', '4EJS', '57H4',
         '58MP', '5MUD', '5T43', '5TRB', '62EZ', '6BFJ', '6JWB', '6LVF', '6PBE', '6S55', '7BMT', '7LBH', '7MNF', '7W2P', '8KB6', '8XDJ',
         '93JH', '9BXH', '9C9N', '9CWY', '9HCY', '9JBA', '9KAX', '9KBC', '9MMA', '9MQT-01', '9SA2', 'A2M4', 'AB8U', 'B63P', 'BD7L', 'BEC7',
@@ -29,70 +29,69 @@ class YamlTestSuiteTest extends TestCase
     }
 
     #[DataProvider('yamlTestSuiteProvider')]
-    public function testYamlTestSuite(string $shortcode, string $dir)
+    public function testYamlTestSuite(string $testName, string $shortcode, string $file, bool $isErrorExpected)
     {
-
-        $isErrorExpected = false;
-        if (file_exists($dir . \DIRECTORY_SEPARATOR . 'error')) {
-            $isErrorExpected = true;
-            $this->expectException(YamlParserException::class);
+        if ('' === $file) {
+            $this->markTestSkipped('The YAML test suite is not available: ' . $testName);
         }
 
-        if (in_array($shortcode, self::$SKIPPED_TESTS, true)) {
-            $testname = is_file($dir . \DIRECTORY_SEPARATOR . '===') ? trim(file_get_contents($dir . \DIRECTORY_SEPARATOR . '===')) : $shortcode;
+        if (in_array($shortcode, self::SKIPPED_TESTS, true)) {
             if ($isErrorExpected) {
-                $this->markTestSkipped('Test "' . $testname . '" is skipped, as error was expected but not yet supported.');
+                $this->markTestSkipped('Test "' . $testName . '" is skipped, as error was expected but not yet supported.');
             } else {
-                $this->markTestSkipped('Test "' . $testname . '" is skipped, as it is not yet supported.');
+                $this->markTestSkipped('Test "' . $testName . '" is skipped, as it is not yet supported.');
             }
         }
 
-        $file = $dir . \DIRECTORY_SEPARATOR . 'in.yaml';
+        if ($isErrorExpected) {
+            $this->expectException(YamlParserException::class);
+        }
 
-        // Uncomment to see which file is being parsed
-        // echo 'Parsing file: ' . $file . PHP_EOL;
-        $yaml = $this->yamlParser->parseFile($file);
+        $data = $this->yamlParser->parseFile($file);
 
         if (!$isErrorExpected) {
-            if (is_scalar($yaml)) {
-                $this->assertIsScalar($yaml);
+            if (is_scalar($data)) {
+                $this->assertIsScalar($data);
 
                 return;
             }
 
-            $this->assertInstanceOf(\ArrayObject::class, $yaml);
+            $this->assertInstanceOf(\ArrayObject::class, $data);
         }
     }
 
-    public static function yamlTestSuiteProvider(): array
+    public static function yamlTestSuiteProvider(): \Generator
     {
-        if (!file_exists(__DIR__ . \DIRECTORY_SEPARATOR . 'yaml-test-suite' . \DIRECTORY_SEPARATOR . 'data')) {
-            self::markTestSkipped('YAML Test Suite data folder not found. Please run "make data-update" to download the test suite.');
+        $dataDir = __DIR__ . '/yaml-test-suite';
+        $shortcodeDirs = glob($dataDir . '/*', GLOB_ONLYDIR);
+
+        if (empty($shortcodeDirs)) {
+            yield 'yaml-test-suite-empty' => ['YAML Test Suite Empty', '', '', false, null];
+
+            return;
         }
 
-        $dataDir = __DIR__ . \DIRECTORY_SEPARATOR . 'yaml-test-suite' . \DIRECTORY_SEPARATOR . 'data';
-        $shortcodeDirs = glob($dataDir . \DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR);
-
-        $testDirs = [];
         foreach ($shortcodeDirs as $shortcodeDir) {
             $shortcode = basename($shortcodeDir);
             if (in_array($shortcode, ['name', 'tags'], true)) {
                 continue;
             }
 
-            if (file_exists($shortcodeDir . \DIRECTORY_SEPARATOR . 'in.yaml')) {
-                $testDirs[] = [$shortcode, $shortcodeDir];
+            if (file_exists($shortcodeDir . '/in.yaml')) {
+                $isErrorExpected = file_exists($shortcodeDir . '/error');
+                $testName = is_file($shortcodeDir . '/===') ? trim(file_get_contents($shortcodeDir . '/===')) : $shortcode;
+                yield $shortcode => [$testName, $shortcode, $shortcodeDir . '/in.yaml', $isErrorExpected];
             } else {
-                $subDirs = glob($shortcodeDir . \DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR);
+                $subDirs = glob($shortcodeDir . '/*', GLOB_ONLYDIR);
                 foreach ($subDirs as $subDir) {
-                    if (file_exists($subDir . \DIRECTORY_SEPARATOR . 'in.yaml')) {
+                    if (file_exists($subDir . '/in.yaml')) {
                         $shortcodeSub = $shortcode . '-' . basename($subDir);
-                        $testDirs[] = [$shortcodeSub, $subDir];
+                        $testName = is_file($subDir . '/===') ? trim(file_get_contents($subDir . '/===')) : $shortcode;
+                        $isErrorExpected = file_exists($subDir . '/error');
+                        yield $shortcodeSub => [$testName, $shortcodeSub, $subDir . '/in.yaml', $isErrorExpected];
                     }
                 }
             }
         }
-
-        return $testDirs;
     }
 }
