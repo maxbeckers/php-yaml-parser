@@ -62,7 +62,7 @@ class YamlTestSuiteTest extends TestCase
 
     public static function yamlTestSuiteProvider(): \Generator
     {
-        $dataDir = __DIR__ . '/yaml-test-suite';
+        $dataDir = dirname(__DIR__) . '/vendor/yaml/yaml-test-suite';
         $shortcodeDirs = glob($dataDir . '/*', GLOB_ONLYDIR);
 
         if (empty($shortcodeDirs)) {
