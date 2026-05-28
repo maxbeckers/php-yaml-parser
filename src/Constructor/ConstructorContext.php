@@ -1,8 +1,8 @@
 <?php
 
-namespace MaxBeckers\YamlParser\Serializer;
+namespace MaxBeckers\YamlParser\Constructor;
 
-class SerializerContext
+class ConstructorContext
 {
     public function __construct(
         public array $references = [],

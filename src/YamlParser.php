@@ -16,20 +16,20 @@ use MaxBeckers\YamlParser\Resolver\Tag\Basic\IntTagHandler;
 use MaxBeckers\YamlParser\Resolver\Tag\Basic\NullTagHandler;
 use MaxBeckers\YamlParser\Resolver\Tag\Basic\StringTagHandler;
 use MaxBeckers\YamlParser\Resolver\Tag\Basic\TimestampTagHandler;
-use MaxBeckers\YamlParser\Resolver\Tag\TagProcessor;
+use MaxBeckers\YamlParser\Constructor\ArrayObjectConstructor;
 use MaxBeckers\YamlParser\Resolver\Tag\TagRegistry;
-use MaxBeckers\YamlParser\Serializer\ArrayObjectSerializer;
+use MaxBeckers\YamlParser\Resolver\Tag\TagResolver;
 
 final class YamlParser
 {
-    private TagProcessor $tagProcessor;
+    private TagResolver $tagResolver;
     private TagRegistry $tagRegistry;
 
     public function __construct(
         ?TagRegistry $tagRegistry = null,
     ) {
         $this->tagRegistry = $tagRegistry ?? new TagRegistry();
-        $this->tagProcessor = new TagProcessor($this->tagRegistry);
+        $this->tagResolver = new TagResolver($this->tagRegistry);
 
         $this->tagRegistry->register(new BinaryTagHandler());
         $this->tagRegistry->register(new BoolTagHandler());
@@ -44,12 +44,12 @@ final class YamlParser
     {
         $tokens = Lexer::tokenize(new LexerContext($yaml));
         $ast = Parser::parse(new ParserContext(new TokenStream($tokens)));
-        $ast = $this->tagProcessor->process($ast);
+        $ast = $this->tagResolver->process($ast);
         $ast = AnchorResolver::resolve($ast);
         $ast = MergeResolver::resolve($ast);
-        $serializer = new ArrayObjectSerializer();
+        $constructor = new ArrayObjectConstructor();
 
-        $serialized = $serializer->serialize($ast);
+        $serialized = $constructor->construct($ast);
         if ($stripWrapperOnSingleItem && ($serialized instanceof \ArrayObject || is_array($serialized)) && count($serialized) === 1) {
             return $serialized[0];
         }

@@ -8,7 +8,7 @@ use MaxBeckers\YamlParser\Node\MappingNode;
 use MaxBeckers\YamlParser\Node\ScalarNode;
 use MaxBeckers\YamlParser\Node\SequenceNode;
 
-final readonly class TagProcessor
+final readonly class TagResolver
 {
     public function __construct(
         private TagRegistry $registry
