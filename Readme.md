@@ -42,22 +42,22 @@ $yamlParser->getTagRegistry()->register(
 
 ## Architecture
 
-The parser follows a multi-stage pipeline:
+The library follows a multi-stage pipeline:
 
 ```plaintext
 Input (string/file)
     ↓
 Lexer (tokenization)
     ↓
-Parser (AST building)
+Parser (AST building, implicit tag resolution)
     ↓
-Tag Processor (allows also custom tag handling)
+Tag Resolver (explicit tag handling, extensible with custom tags)
     ↓
 Resolver (anchors/aliases)
     ↓
 Resolver (merge keys)
     ↓
-Serializer (to PHP ArrayObject)
+Constructor (to PHP ArrayObject)
 ```
 
 ## Background
