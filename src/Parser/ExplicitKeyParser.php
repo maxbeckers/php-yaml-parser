@@ -47,7 +47,15 @@ final class ExplicitKeyParser
                 Parser::advance($context);
             }
 
+            $isIndented = false;
+            if (Parser::peek($context)->is(TokenType::INDENT)) {
+                Parser::handleIndent($context);
+                $isIndented = true;
+            }
             $value = Parser::parseValue($context);
+            if ($isIndented && Parser::peek($context)->is(TokenType::DEDENT)) {
+                Parser::handleDedent($context);
+            }
         }
         $mappingNode->addPair($key, $value);
 

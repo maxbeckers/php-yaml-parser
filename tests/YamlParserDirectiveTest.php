@@ -34,10 +34,8 @@ YAML;
 --- text
 YAML;
 
-        // should we ignore the invalid version with a warning instead?
-        $this->expectException(LexerException::class);
-        $this->expectExceptionMessage('Unsupported YAML version \'1.3\' in line 1, column 0');
-        $this->yamlParser->parse($input);
+        $yaml = $this->yamlParser->parse($input);
+        $this->assertEquals('text', $yaml);
     }
 
     public function testParseYaml_withYamlDirectiveTwice()
@@ -61,9 +59,7 @@ YAML;
 --- "foo"
 YAML;
 
-        // should we ignore the invalid directive with a warning instead?
-        $this->expectException(LexerException::class);
-        $this->expectExceptionMessage('Invalid directive name \'FOO\' in line 1, column 0');
-        $this->yamlParser->parse($input);
+        $yaml = $this->yamlParser->parse($input);
+        $this->assertEquals('foo', $yaml);
     }
 }

@@ -83,4 +83,43 @@ YAML;
 
         $this->assertEquals("1st non-empty\n2nd non-empty 3rd non-empty", $yaml);
     }
+
+    public function testParseYaml_withInlineEllipsisInPlainScalar()
+    {
+        $input = <<<'YAML'
+description: items can be open, closed, or pending...
+status: active
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertEquals('items can be open, closed, or pending...', $yaml['description']);
+        $this->assertEquals('active', $yaml['status']);
+    }
+
+    public function testParseYaml_withBracketsInPlainScalar()
+    {
+        $input = <<<'YAML'
+token: rhHAQUrR118u[...]cwDw==
+next: value
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertEquals('rhHAQUrR118u[...]cwDw==', $yaml['token']);
+        $this->assertEquals('value', $yaml['next']);
+    }
+
+    public function testParseYaml_withEllipsisInMiddleOfPlainScalar()
+    {
+        $input = <<<'YAML'
+key: start...middle...end
+other: value
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertEquals('start...middle...end', $yaml['key']);
+        $this->assertEquals('value', $yaml['other']);
+    }
 }

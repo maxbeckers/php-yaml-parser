@@ -87,7 +87,7 @@ final class DoubleQuotedScalarScanner extends AbstractScanner
     {
         return preg_replace_callback(
             '/\\\\(?:' .
-            '([\\\\\"\/0abefnrtv NL_P])|' .
+            '([\\\\\"\/0abefnrtv\t NL_P])|' .
             'x([0-9a-fA-F]{2})|' .
             'u([0-9a-fA-F]{4})|' .
             'U([0-9a-fA-F]{8})|' .
@@ -109,6 +109,7 @@ final class DoubleQuotedScalarScanner extends AbstractScanner
                     switch ($m[1]) {
                         case '\\': return "\x5C";
                         case '"':  return "\x22";
+                        case "\t": return "\x09";
                         case 'n':  return "\x0A";
                         case 'r':  return "\x0D";
                         case 't':  return "\x09";

@@ -2,6 +2,7 @@
 
 namespace MaxBeckers\YamlParser\Lexer\Scanner;
 
+use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Format\Version;
 
@@ -9,8 +10,11 @@ final class CommentScanner extends AbstractScanner
 {
     public static function scan(LexerContext $context, string $currentChar): bool
     {
-        if ($currentChar !== '#' || !in_array($context->getInputPart(1, -1), self::commentPreChars($context), true)) {
+        if ($currentChar !== '#') {
             return false;
+        }
+        if (!in_array($context->getInputPart(1, -1), self::commentPreChars($context), true)) {
+            throw new LexerException(sprintf('Comment character \'#\' must be preceded by whitespace at line %d, column %d', $context->getLine(), $context->getColumn()));
         }
 
         $charsTillEol = $context->getNumberOfCharsTill("\n\r");

@@ -86,6 +86,12 @@ final class MappingFlowParser implements TokenParserInterface
                 }
             }
 
+
+            if (Parser::peek($context)->is(TokenType::INDENT)) {
+                $indentLevel++;
+                Parser::handleIndent($context);
+            }
+
             if (Parser::peek($context)->is(TokenType::FLOW_SEPARATOR)) {
                 Parser::advance($context);
 
@@ -93,12 +99,17 @@ final class MappingFlowParser implements TokenParserInterface
                     Parser::handleDedent($context);
                 }
 
+                if (Parser::peek($context)->is(TokenType::INDENT)) {
+                    $indentLevel++;
+                    Parser::handleIndent($context);
+                }
+
                 if (Parser::peek($context)->is(TokenType::MAPPING_END)) {
                     break;
                 }
             } elseif (!Parser::peek($context)->is(TokenType::MAPPING_END)) {
                 throw new ParserException(
-                    "Expected ',' or '}' in flow sequence",
+                    "Expected ',' or '}' in flow mapping",
                     Parser::peek($context)
                 );
             }
@@ -106,7 +117,7 @@ final class MappingFlowParser implements TokenParserInterface
 
         if (!Parser::peek($context)->is(TokenType::MAPPING_END)) {
             throw new ParserException(
-                "Expected '}' to close flow sequence",
+                "Expected '}' to close flow mapping",
                 Parser::peek($context)
             );
         }

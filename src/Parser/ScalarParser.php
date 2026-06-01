@@ -6,6 +6,7 @@ use MaxBeckers\YamlParser\Api\NodeInterface;
 use MaxBeckers\YamlParser\Api\TokenParserInterface;
 use MaxBeckers\YamlParser\Exception\ParserException;
 use MaxBeckers\YamlParser\Lexer\Token;
+use MaxBeckers\YamlParser\Lexer\TokenType;
 use MaxBeckers\YamlParser\Node\NodeMetadata;
 use MaxBeckers\YamlParser\Node\ScalarNode;
 use MaxBeckers\YamlParser\Format\NumberType;
@@ -71,7 +72,10 @@ final class ScalarParser implements TokenParserInterface
     {
         $token = Parser::peek($context);
 
-        if ($token->getMetadata()[Token::METADATA_WAS_MULTILINE_INPUT] ?? false) {
+        $isMultiline = $token->getMetadata()[Token::METADATA_WAS_MULTILINE_INPUT] ?? false;
+        $flowQuotedOk = $context->isFlowContext()
+            && $token->isOneOf(TokenType::DOUBLE_QUOTED_SCALAR, TokenType::SINGLE_QUOTED_SCALAR);
+        if ($isMultiline && !$flowQuotedOk) {
             throw new ParserException(
                 'Multiline scalars are not allowed as mapping keys.',
                 $token

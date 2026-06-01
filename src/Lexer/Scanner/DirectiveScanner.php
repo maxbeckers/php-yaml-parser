@@ -28,15 +28,19 @@ final class DirectiveScanner extends AbstractScanner
         $directiveType = DirectiveType::tryFrom($directiveName);
 
         if ($directiveType === null) {
-            throw new LexerException(
-                "Invalid directive name '{$directiveName}' in line {$context->getLine()}, column {$context->getColumn()}"
-            );
+            // Unknown directives must be silently ignored per YAML spec
+            $context->increasePosition($charsTillEol);
+
+            return true;
         }
+
+        $directiveValue = (string) preg_replace('/\s+#.*$/', '', $directiveValue);
+        $directiveValue = trim($directiveValue);
 
         switch ($directiveType) {
             case DirectiveType::YAML:
                 self::checkYamlDirective($context, $directiveValue);
-                $context->setYamlVersion(Version::from($directiveValue));
+                $context->setYamlVersion(Version::tryFrom($directiveValue) ?? Version::VERSION_1_2);
                 break;
             case DirectiveType::TAG:
                 self::checkTagDirective($context, $directiveValue);
@@ -77,12 +81,7 @@ final class DirectiveScanner extends AbstractScanner
             );
         }
 
-        $version = Version::tryFrom($versionParts[0] . '.' . $versionParts[1]);
-        if ($version === null) {
-            throw new LexerException(
-                "Unsupported YAML version '{$directiveValue}' in line {$context->getLine()}, column {$context->getColumn()}"
-            );
-        }
+        // Unknown versions (e.g. 1.3) are silently treated as the latest supported version
     }
 
     private static function checkTagDirective(LexerContext $context, string $directiveValue): void

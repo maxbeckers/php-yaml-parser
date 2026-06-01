@@ -91,6 +91,36 @@ YAML;
         $this->assertEquals('Document', $yaml);
     }
 
+    public function testParseYaml_withInlineEllipsisDoesNotSplitDocument()
+    {
+        $input = <<<'YAML'
+description: options are open, pending, or closed...
+title: Test
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertInstanceOf(\ArrayObject::class, $yaml);
+        $this->assertCount(2, $yaml);
+        $this->assertEquals('options are open, pending, or closed...', $yaml['description']);
+        $this->assertEquals('Test', $yaml['title']);
+    }
+
+    public function testParseYaml_withInlineBracketsDoesNotBreakParsing()
+    {
+        $input = <<<'YAML'
+token: abc123[...]xyz==
+label: encoded value
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertInstanceOf(\ArrayObject::class, $yaml);
+        $this->assertCount(2, $yaml);
+        $this->assertEquals('abc123[...]xyz==', $yaml['token']);
+        $this->assertEquals('encoded value', $yaml['label']);
+    }
+
     public function testParseYaml_withBareDocuments()
     {
         $this->markTestSkipped('Currently not supported: Bare documents without document markers.');

@@ -55,7 +55,9 @@ final class MappingParser implements TokenParserInterface
             } else {
                 $metadata = new NodeMetadata();
                 MetadataParser::parseMetadata($metadata, $context);
-                if (Parser::peek($context)->isScalar()) {
+                if (Parser::peek($context)->is(TokenType::KEY_INDICATOR)) {
+                    $key = new ScalarNode(null, $metadata);
+                } elseif (Parser::peek($context)->isScalar()) {
                     $key = ScalarParser::parse($context, $metadata, true);
                 } else {
                     $key = Parser::parseValue($context, $metadata, true);
@@ -68,6 +70,11 @@ final class MappingParser implements TokenParserInterface
                 );
             }
             Parser::advance($context);
+
+            if (Parser::isAtEnd($context) || Parser::peek($context)->is(TokenType::DOCUMENT_END) || Parser::peek($context)->is(TokenType::DOCUMENT_START)) {
+                $mapping->addPair($key, new ScalarNode(null));
+                break;
+            }
 
             if (Parser::peek($context)->isScalar() && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR) && !$context->isExplicitKey()) {
                 $value = new ScalarNode(null);
@@ -92,6 +99,10 @@ final class MappingParser implements TokenParserInterface
 
     private static function isMapping(ParserContext $context, int $peek = 0): bool
     {
+        if (Parser::peek($context, $peek)->is(TokenType::KEY_INDICATOR)) {
+            return true;
+        }
+
         if (!Parser::peek($context, $peek)->isScalar()) {
             return false;
         }

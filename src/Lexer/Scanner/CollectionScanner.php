@@ -143,7 +143,7 @@ final class CollectionScanner extends AbstractScanner
             $context->popMode();
         }
         $context->addToken(self::createToken($context, TokenType::KEY_INDICATOR, ':'));
-        $context->increasePositionInLine(1 + $context->getNumberOfCharsCount(' ', 1));
+        $context->increasePositionInLine(1 + $context->getNumberOfCharsCount(" \t", 1));
     }
 
     private static function handleExplicitKey(LexerContext $context): void
@@ -151,8 +151,11 @@ final class CollectionScanner extends AbstractScanner
         $context->addToken(self::createToken($context, TokenType::EXPLICIT_KEY, '?'));
         $spaces = $context->getNumberOfCharsCount(' ', 1);
         $context->increasePositionInLine(1 + $spaces);
-        $context->pushIndent(1 + $spaces);
         $context->pushMode(ContextMode::EXPLICIT_KEY);
-        $context->addToken(self::createToken($context, TokenType::INDENT));
+        $nextChar = $context->getInputPart(1);
+        if ($nextChar !== '#' && $nextChar !== "\n" && $nextChar !== "\r" && $nextChar !== '') {
+            $context->pushIndent(1 + $spaces);
+            $context->addToken(self::createToken($context, TokenType::INDENT));
+        }
     }
 }

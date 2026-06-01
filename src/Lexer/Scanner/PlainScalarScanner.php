@@ -73,14 +73,14 @@ final class PlainScalarScanner extends AbstractScanner
                 $charsToPossibleEnd++;
             } elseif ($actualChar === ':') {
                 $nextChar = $context->getInputPart(1, $charsToPossibleEnd + 1);
-                if (in_array($nextChar, [' ', "\n", "\r"], true)) {
+                if (in_array($nextChar, [' ', "\t", "\n", "\r"], true)) {
                     break;
                 } elseif ($context->isInFlow() && $nextChar === ',') {
                     break;
                 }
                 $charsToPossibleEnd++;
             } elseif ($actualChar === '.') {
-                if ($context->getInputPart(2, $charsToPossibleEnd + 1) === '..') {
+                if ($charsToPossibleEnd === 0 && $context->getInputPart(2, $charsToPossibleEnd + 1) === '..') {
                     break;
                 }
                 $charsToPossibleEnd++;

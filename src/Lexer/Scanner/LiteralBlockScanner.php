@@ -31,6 +31,12 @@ final class LiteralBlockScanner extends AbstractScanner
             $indentationIndicator = (int) $nextChar;
             $context->increasePosition(1);
             $nextChar = $context->getInputPart(1);
+            if ($indentationIndicator === 0) {
+                throw new LexerException(sprintf('Block scalar indentation indicator cannot be 0 at line %d, column %d', $context->getLine(), $context->getColumn()));
+            }
+            if (FormatHelper::isNumeric($nextChar)) {
+                throw new LexerException(sprintf('Block scalar indentation indicator cannot be more than 9 at line %d, column %d', $context->getLine(), $context->getColumn()));
+            }
         }
 
         if ($chompingIndicator === null && ($nextChar === '-' || $nextChar === '+')) {
@@ -38,7 +44,18 @@ final class LiteralBlockScanner extends AbstractScanner
             $context->increasePosition();
         }
 
+        if ($context->getInputPart(1) === '#') {
+            throw new LexerException(sprintf('Comment \'#\' must be preceded by whitespace after block scalar indicator at line %d, column %d', $context->getLine(), $context->getColumn()));
+        }
+
         $charsToNewline = $context->getNumberOfCharsTill("\n\r");
+        if ($charsToNewline > 0) {
+            $spacesAfterIndicator = $context->getNumberOfCharsCount(' ');
+            $charAfterSpaces = $context->getInputPart(1, $spacesAfterIndicator);
+            if ($spacesAfterIndicator === 0 || ($charAfterSpaces !== '#' && $charAfterSpaces !== '' && $charAfterSpaces !== "\n" && $charAfterSpaces !== "\r")) {
+                throw new LexerException(sprintf('Invalid content after block scalar indicator at line %d, column %d', $context->getLine(), $context->getColumn()));
+            }
+        }
         $context->increasePosition($charsToNewline);
 
         if ($context->getInputPart(1) === "\r" && $context->getInputPart(1, 1) === "\n") {
@@ -56,6 +73,10 @@ final class LiteralBlockScanner extends AbstractScanner
         while (!$context->isAtEndOfFile()) {
             $lineIndent = $context->getNumberOfCharsCount(' ');
             $charAfterIndent = $context->getInputPart(1, $lineIndent);
+
+            if ($charAfterIndent === "\t" && $lineIndent === 0 && $blockIndent === null) {
+                throw new LexerException(sprintf('Tab character found in block scalar indentation at line %d, column %d', $context->getLine(), $context->getColumn()));
+            }
 
             if ($charAfterIndent === "\n" || $charAfterIndent === "\r") {
                 $newlineSize = ($charAfterIndent === "\r" && $context->getInputPart(1, $lineIndent + 1) === "\n") ? 2 : 1;

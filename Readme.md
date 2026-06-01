@@ -78,13 +78,9 @@ But i make it publicly available in the hope that it might be useful to someone.
 ## Todos
 
 - [ ] Performance optimizations for large YAML files
-- [ ] Code cleanup and refactoring
-- [ ] Additional unit tests for edge cases
-- [ ] Implement parsing for currently skipped test cases
-- [ ] Optimize handling for special cases
-- [ ] Add configurable options for parsing behavior
+- [ ] Add configurable options for parsing behavior (e.g. strict mode, return plain arrays instead of ArrayObject)
 - [ ] Improve metadata handling for mappings and sequences
-- [ ] Make all tests from the [YAML test suite](https://github.com/yaml/yaml-test-suite.git) pass (currently 124/402 are skipped)
+- [ ] Make all tests from the [YAML test suite](https://github.com/yaml/yaml-test-suite.git) pass (currently 95 are skipped)
 
 ## Contributing
 

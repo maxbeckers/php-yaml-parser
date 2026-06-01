@@ -2,6 +2,7 @@
 
 namespace MaxBeckers\YamlParser\Lexer\Scanner;
 
+use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Lexer\ContextMode;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Lexer\TokenType;
@@ -41,8 +42,13 @@ final class IndentationScanner extends AbstractScanner
 
                 return true;
             } elseif (in_array($breakingChar, ['"', "'", '#'], true)) {
+                if ($breakingChar === '#') {
+                    $spaces = $context->getNumberOfCharsCount(' ');
+                    $context->increasePositionInLine($spaces);
+
+                    return true;
+                }
                 $endOfPart = match ($breakingChar) {
-                    '#' => $context->getNumberOfCharsTill("\r\n", $nextBreakingChar + 1) + $nextBreakingChar + 1,
                     '"' => $context->getNumberOfCharsTill('"', $nextBreakingChar + 1) + $nextBreakingChar + 1,
                     "'" => $context->getNumberOfCharsTill("'", $nextBreakingChar + 1) + $nextBreakingChar + 1,
                     default => $nextBreakingChar,
@@ -76,6 +82,14 @@ final class IndentationScanner extends AbstractScanner
 
         $spaces = $context->getNumberOfCharsCount(' ');
         $currentIndent = $context->getCurrentIndent();
+
+        if ($spaces <= $currentIndent
+            && $context->getInputPart(1, $spaces) === "\t"
+            && !$context->isInFlow()
+            && in_array($context->getMode(), [ContextMode::BLOCK_VALUE, ContextMode::BLOCK_SEQUENCE_ENTRY], true)
+        ) {
+            throw new LexerException(sprintf('Tab character found in block indentation at line %d, column %d', $context->getLine(), $context->getColumn()));
+        }
 
         if ($spaces > 0) {
             $context->increasePositionInLine($spaces);

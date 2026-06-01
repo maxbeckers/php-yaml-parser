@@ -43,6 +43,10 @@ final class SequenceFlowParser implements TokenParserInterface
                     Parser::handleDedent($context);
                 }
 
+                if (Parser::peek($context)->is(TokenType::INDENT)) {
+                    Parser::handleIndent($context);
+                }
+
                 if (Parser::peek($context)->is(TokenType::SEQUENCE_END)) {
                     break;
                 }
