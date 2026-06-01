@@ -55,7 +55,7 @@ class YamlParserEdgeCasesTest extends TestCase
 
     public function testDoubleQuotedTabEscapeCharacter(): void
     {
-        $yaml = "\"hello\\tworld\"";
+        $yaml = '"hello\\tworld"';
 
         $result = $this->yamlParser->parse($yaml);
 
