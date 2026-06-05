@@ -53,6 +53,12 @@ final class PlainScalarScanner extends AbstractScanner
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                         break 2;
                     } elseif ($actualCharLineAhead === '-' && !in_array($context->getInputPart(1, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 1), [' ', "\n", "\r", '-'], true)) {
+                        $lineAheadOffset = $charsToPossibleEnd + $lookAheadLine;
+                        $lineAheadIndent = $context->getNumberOfCharsCount(" \t", $lineAheadOffset);
+                        if (self::isLikelyMappingEntry($context, $lineAheadOffset, $lineAheadIndent)) {
+                            break 2;
+                        }
+
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                     } elseif ($context->isAtEndOfFile($charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead)) {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
@@ -158,5 +164,31 @@ final class PlainScalarScanner extends AbstractScanner
         $context->increasePositionInLine($charsToPossibleEnd + $context->getNumberOfCharsCount(' ', $charsToPossibleEnd));
 
         return true;
+    }
+
+    private static function isLikelyMappingEntry(LexerContext $context, int $lineOffset, int $lineIndent): bool
+    {
+        if ($context->isInFlow() || $lineIndent > $context->getCurrentIndent()) {
+            return false;
+        }
+
+        $lineLength = $context->getNumberOfCharsTill("\n\r", $lineOffset);
+        if ($lineLength <= 0) {
+            return false;
+        }
+
+        $line = ltrim($context->getInputPart($lineLength, $lineOffset), " \t");
+        if ($line === '' || str_starts_with($line, '#') || str_starts_with($line, '-')) {
+            return false;
+        }
+
+        $colonPos = strpos($line, ':');
+        if ($colonPos === false) {
+            return false;
+        }
+
+        $nextChar = $line[$colonPos + 1] ?? '';
+
+        return $nextChar === '' || $nextChar === ' ' || $nextChar === "\t";
     }
 }

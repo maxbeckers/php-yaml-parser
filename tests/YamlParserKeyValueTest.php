@@ -515,4 +515,33 @@ YAML;
         $this->assertEquals('yellow', $yaml[0]['sun']);
         $this->assertEquals('white', $yaml[1]['{"earth":"blue"}']['moon']);
     }
+
+    public function testParseYaml_withHyphenatedTopLevelKey()
+    {
+        $input = <<<'YAML'
+a: 1
+foo-bar: 2
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertSame(1, $yaml['a']);
+        $this->assertArrayHasKey('foo-bar', $yaml);
+        $this->assertSame(2, $yaml['foo-bar']);
+    }
+
+    public function testParseYaml_withHyphenatedExtensionKeyAfterStringValue()
+    {
+        $input = <<<'YAML'
+schema:
+  type: string
+  x-trim: 30
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertSame('string', $yaml['schema']['type']);
+        $this->assertArrayHasKey('x-trim', $yaml['schema']);
+        $this->assertSame(30, $yaml['schema']['x-trim']);
+    }
 }
