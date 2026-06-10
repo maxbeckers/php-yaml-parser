@@ -158,4 +158,86 @@ class YamlParserEdgeCasesTest extends TestCase
         $this->assertInstanceOf(\ArrayObject::class, $result);
         $this->assertEquals('value', $result['multi line']);
     }
+
+    public function testInlineEnumFlowDoesNotNestSiblingPropertiesOrSchemas(): void
+    {
+        $input = <<<'YAML'
+openapi: 3.0.3
+components:
+  schemas:
+    SetFlagEffect:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [set_flag]
+        flag:
+          type: string
+        value:
+          oneOf:
+            - type: boolean
+            - type: number
+    NextSchema:
+      type: object
+YAML;
+
+        $result = $this->yamlParser->parse($input);
+
+        $this->assertInstanceOf(\ArrayObject::class, $result);
+        $schemas = $result['components']['schemas'];
+        $this->assertArrayHasKey('SetFlagEffect', $schemas);
+        $this->assertArrayHasKey('NextSchema', $schemas);
+
+        $props = $schemas['SetFlagEffect']['properties'];
+        $this->assertArrayHasKey('type', $props);
+        $this->assertArrayHasKey('flag', $props);
+        $this->assertArrayHasKey('value', $props);
+    }
+
+    public function testOneOfDiscriminatorSectionDoesNotHideFollowingSchemas(): void
+    {
+        $input = <<<'YAML'
+openapi: 3.0.3
+components:
+  schemas:
+    DialogueEffect:
+      oneOf:
+        - $ref: '#/components/schemas/SetFlagEffect'
+      discriminator:
+        propertyName: type
+        mapping:
+          set_flag: '#/components/schemas/SetFlagEffect'
+    SetFlagEffect:
+      type: object
+      required: [type, flag]
+      properties:
+        type:
+          type: string
+          enum: [set_flag]
+        flag:
+          type: string
+    DialogueCondition:
+      oneOf:
+        - $ref: '#/components/schemas/FlagCondition'
+      discriminator:
+        propertyName: type
+        mapping:
+          flag: '#/components/schemas/FlagCondition'
+    FlagCondition:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [flag]
+YAML;
+
+        $result = $this->yamlParser->parse($input);
+
+        $this->assertInstanceOf(\ArrayObject::class, $result);
+        $schemas = $result['components']['schemas'];
+        $this->assertArrayHasKey('DialogueEffect', $schemas);
+        $this->assertArrayHasKey('SetFlagEffect', $schemas);
+        $this->assertArrayHasKey('DialogueCondition', $schemas);
+        $this->assertArrayHasKey('FlagCondition', $schemas);
+    }
 }

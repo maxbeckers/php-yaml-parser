@@ -20,6 +20,7 @@ final class SequenceFlowParser implements TokenParserInterface
     {
         $context->enterFlowContext();
         Parser::advance($context);
+        $startIndentLevel = $context->getIndentationLevel();
         $sequence = new SequenceNode([], $metadata);
 
         while (!Parser::peek($context)->is(TokenType::SEQUENCE_END)) {
@@ -32,6 +33,14 @@ final class SequenceFlowParser implements TokenParserInterface
 
             if (Parser::peek($context)->is(TokenType::INDENT)) {
                 Parser::handleIndent($context);
+                continue;
+            }
+
+            if (Parser::peek($context)->is(TokenType::DEDENT)
+                && $context->getIndentationLevel() > $startIndentLevel
+            ) {
+                Parser::handleDedent($context);
+                continue;
             }
 
             $sequence->addItem(Parser::parseValue($context));
@@ -67,12 +76,14 @@ final class SequenceFlowParser implements TokenParserInterface
 
         Parser::advance($context);
 
-        if (false === $isKey && Parser::peek($context)->is(TokenType::KEY_INDICATOR) && !$context->isExplicitKey()) {
-            return MappingParser::parse(context: $context, explicitKey: $sequence);
+        while (Parser::peek($context)->is(TokenType::DEDENT)
+            && $context->getIndentationLevel() > $startIndentLevel
+        ) {
+            Parser::handleDedent($context);
         }
 
-        if (Parser::peek($context)->is(TokenType::DEDENT)) {
-            Parser::handleDedent($context);
+        if (false === $isKey && Parser::peek($context)->is(TokenType::KEY_INDICATOR) && !$context->isExplicitKey()) {
+            return MappingParser::parse(context: $context, explicitKey: $sequence);
         }
 
         $context->exitFlowContext();
