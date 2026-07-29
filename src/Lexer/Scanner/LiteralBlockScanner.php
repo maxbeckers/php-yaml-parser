@@ -3,9 +3,9 @@
 namespace MaxBeckers\YamlParser\Lexer\Scanner;
 
 use MaxBeckers\YamlParser\Exception\LexerException;
+use MaxBeckers\YamlParser\Format\FormatHelper;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Lexer\TokenType;
-use MaxBeckers\YamlParser\Format\FormatHelper;
 
 final class LiteralBlockScanner extends AbstractScanner
 {
@@ -69,6 +69,7 @@ final class LiteralBlockScanner extends AbstractScanner
         $parentIndent = $context->getCurrentIndent();
         $lines = [];
         $fixedIndentOrContentSeen = $blockIndent !== null;
+        $maxLeadingEmptyIndent = 0;
 
         while (!$context->isAtEndOfFile()) {
             $lineIndent = $context->getNumberOfCharsCount(' ');
@@ -80,6 +81,10 @@ final class LiteralBlockScanner extends AbstractScanner
 
             if ($charAfterIndent === "\n" || $charAfterIndent === "\r") {
                 $newlineSize = ($charAfterIndent === "\r" && $context->getInputPart(1, $lineIndent + 1) === "\n") ? 2 : 1;
+
+                if (!$fixedIndentOrContentSeen && $lineIndent > $maxLeadingEmptyIndent) {
+                    $maxLeadingEmptyIndent = $lineIndent;
+                }
 
                 if (!$fixedIndentOrContentSeen && ($blockIndent === null || $lineIndent > $blockIndent)) {
                     $blockIndent = $lineIndent;
@@ -117,7 +122,16 @@ final class LiteralBlockScanner extends AbstractScanner
                 $context->increasePosition($lineIndent + $newlineSize);
                 $context->increaseLine();
                 continue;
+            }
 
+            if (!$fixedIndentOrContentSeen && $blockIndent !== null && $lineIndent < $maxLeadingEmptyIndent) {
+                throw new LexerException(
+                    sprintf(
+                        'Literal block scalar indentation less than the defined indentation in line %d, column %d',
+                        $context->getLine(),
+                        $context->getColumn()
+                    )
+                );
             }
 
             if (!$fixedIndentOrContentSeen && ($blockIndent === null || $lineIndent > $blockIndent)) {

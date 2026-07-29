@@ -83,6 +83,14 @@ final class IndentationScanner extends AbstractScanner
         $spaces = $context->getNumberOfCharsCount(' ');
         $currentIndent = $context->getCurrentIndent();
 
+        if ($context->getInputPart(1, $spaces) === '#') {
+            if ($spaces > 0) {
+                $context->increasePositionInLine($spaces);
+            }
+
+            return true;
+        }
+
         if ($spaces <= $currentIndent
             && $context->getInputPart(1, $spaces) === "\t"
             && !$context->isInFlow()

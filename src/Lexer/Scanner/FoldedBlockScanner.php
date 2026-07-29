@@ -61,6 +61,7 @@ final class FoldedBlockScanner extends AbstractScanner
         $blockIndent = $indentationIndicator;
         $wasEmptyLineIndent = false;
         $isBlockIndentFixed = $blockIndent !== null;
+        $maxLeadingEmptyIndent = 0;
         $currentIndent = $context->getCurrentIndent();
         $lines = [];
         while (true) {
@@ -85,6 +86,10 @@ final class FoldedBlockScanner extends AbstractScanner
                 $wasEmptyLineIndent = $charsToEol === 0;
             }
             if ($charsToEol === 0) {
+                if (!$isBlockIndentFixed && $lineIndent > $maxLeadingEmptyIndent) {
+                    $maxLeadingEmptyIndent = $lineIndent;
+                }
+
                 if ($lineStart < $blockIndent || $wasEmptyLineIndent) {
                     $lines[] = '';
                 }
@@ -94,6 +99,11 @@ final class FoldedBlockScanner extends AbstractScanner
                 $context->increasePosition($lineStart + $newlineChars);
                 continue;
             }
+
+            if (!$isBlockIndentFixed && $blockIndent !== null && $lineIndent < $maxLeadingEmptyIndent) {
+                throw new LexerException(sprintf('Folded block scalar indentation less than the defined indentation in line %d, column %d', $context->getLine(), $context->getColumn()));
+            }
+
             if ($lineIndent <= $currentIndent) {
                 $line = $context->getInputPart($charsToEol, $lineStart + $newlineChars);
                 if (preg_match('/^[^#]*(:|-)(?:\s|$)/', $line)) {
