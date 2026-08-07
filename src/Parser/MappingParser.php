@@ -16,6 +16,10 @@ final class MappingParser implements TokenParserInterface
     {
         $peek = Parser::peek($context)->is(TokenType::INDENT) ? 1 : 0;
 
+        while (Parser::peek($context, $peek)->isOneOf(TokenType::TAG, TokenType::ANCHOR)) {
+            $peek++;
+        }
+
         return Parser::peek($context, $peek)->is(TokenType::EXPLICIT_KEY) || self::isMapping($context, $peek);
     }
 
@@ -102,6 +106,18 @@ final class MappingParser implements TokenParserInterface
                     Parser::peek($context, 1)
                 );
             } else {
+                if (!$context->isFlowContext()
+                    && Parser::peek($context)->is(TokenType::ANCHOR)
+                    && Parser::peek($context, 1)->is(TokenType::SEQUENCE_INDICATOR)
+                    && Parser::peek($context, 1)->line > Parser::peek($context)->line
+                    && Parser::peek($context)->column === 0
+                ) {
+                    throw new ParserException(
+                        'Anchor on a separate line cannot directly prefix a block sequence value in a mapping',
+                        Parser::peek($context)
+                    );
+                }
+
                 $isIndented = false;
                 $valueStartToken = Parser::peek($context);
                 if (Parser::peek($context)->is(TokenType::INDENT)) {
@@ -173,6 +189,14 @@ final class MappingParser implements TokenParserInterface
             return true;
         }
 
+        if (Parser::peek($context, $peek)->is(TokenType::ALIAS)) {
+            return Parser::peek($context, $peek + 1)->is(TokenType::KEY_INDICATOR);
+        }
+
+        if (Parser::peek($context, $peek)->isOneOf(TokenType::SEQUENCE_START, TokenType::MAPPING_START)) {
+            return self::hasKeyIndicatorAfterComplexKey($context, $peek);
+        }
+
         if (!Parser::peek($context, $peek)->isScalar()) {
             return false;
         }
@@ -186,5 +210,57 @@ final class MappingParser implements TokenParserInterface
         }
 
         return true;
+    }
+
+    private static function hasKeyIndicatorAfterComplexKey(ParserContext $context, int $peek): bool
+    {
+        $sequenceDepth = 0;
+        $mappingDepth = 0;
+
+        for ($offset = $peek; $offset < $peek + 256; $offset++) {
+            $token = Parser::peek($context, $offset);
+
+            if ($token->is(TokenType::EOF)) {
+                return false;
+            }
+
+            if ($token->is(TokenType::SEQUENCE_START)) {
+                $sequenceDepth++;
+                continue;
+            }
+
+            if ($token->is(TokenType::MAPPING_START)) {
+                $mappingDepth++;
+                continue;
+            }
+
+            if ($token->is(TokenType::SEQUENCE_END)) {
+                if ($sequenceDepth === 0) {
+                    return false;
+                }
+                $sequenceDepth--;
+                continue;
+            }
+
+            if ($token->is(TokenType::MAPPING_END)) {
+                if ($mappingDepth === 0) {
+                    return false;
+                }
+                $mappingDepth--;
+                continue;
+            }
+
+            if ($sequenceDepth === 0 && $mappingDepth === 0) {
+                if ($token->is(TokenType::KEY_INDICATOR)) {
+                    return true;
+                }
+
+                if ($token->isOneOf(TokenType::FLOW_SEPARATOR, TokenType::DOCUMENT_END, TokenType::DOCUMENT_START, TokenType::DEDENT)) {
+                    return false;
+                }
+            }
+        }
+
+        return false;
     }
 }

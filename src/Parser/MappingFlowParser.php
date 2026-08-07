@@ -65,13 +65,13 @@ final class MappingFlowParser implements TokenParserInterface
                 continue;
             }
 
-            $metadata = new NodeMetadata();
-            MetadataParser::parseMetadata($metadata, $context);
+            $keyMetadata = new NodeMetadata();
+            MetadataParser::parseMetadata($keyMetadata, $context);
             $keyStartLine = Parser::peek($context)->line;
             if (Parser::peek($context)->isScalar()) {
-                $key = ScalarParser::parse($context, $metadata, true);
+                $key = ScalarParser::parse($context, $keyMetadata, true);
             } else {
-                $key = Parser::parseValue($context, $metadata, true);
+                $key = Parser::parseValue($context, $keyMetadata, true);
             }
 
             $lineBeforeColon = $keyStartLine;
@@ -113,7 +113,7 @@ final class MappingFlowParser implements TokenParserInterface
                 if (Parser::peek($context)->isOneOf(TokenType::FLOW_SEPARATOR, TokenType::MAPPING_END)) {
                     $mapping->addPair($key, new ScalarNode(null));
                 } else {
-                    $value = Parser::parseValue($context, $metadata);
+                    $value = Parser::parseValue($context);
                     $mapping->addPair($key, $value);
                 }
             }

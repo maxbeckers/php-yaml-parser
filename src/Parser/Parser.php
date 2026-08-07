@@ -61,7 +61,38 @@ final class Parser
 
     public static function parseValue(ParserContext $context, $metadata = new NodeMetadata(), bool $isKey = false): NodeInterface
     {
-        MetadataParser::parseMetadata($metadata, $context);
+        $previousToken = Parser::peek($context, -1);
+        $metadataToken = MetadataParser::parseMetadata($metadata, $context);
+
+        if (!$isKey
+            && !$context->isFlowContext()
+            && $previousToken->is(TokenType::KEY_INDICATOR)
+            && $metadataToken !== null
+            && $metadataToken->line > $previousToken->line
+            && $metadataToken->column === 0
+        ) {
+            throw new ParserException(
+                'Node metadata for a mapping value must be indented',
+                $metadataToken
+            );
+        }
+
+        if (!$isKey
+            && $metadata->getAnchor() !== null
+            && $metadata->getTag() === null
+            && $previousToken->is(TokenType::DOCUMENT_START)
+            && $metadataToken !== null
+            && $metadataToken->line === $previousToken->line
+            && $metadataToken->column > 0
+            && Parser::peek($context)->is(TokenType::PLAIN_SCALAR)
+            && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR)
+            && Parser::peek($context)->line === $metadataToken->line
+        ) {
+            throw new ParserException(
+                'Anchor cannot start an implicit mapping key on the document start line',
+                Parser::peek($context)
+            );
+        }
 
         $metadataIndentWrapped = false;
         if (($metadata->getTag() !== null || $metadata->getAnchor() !== null)
@@ -78,7 +109,19 @@ final class Parser
                 self::handleDedent($context);
             }
 
-            return new ScalarNode('',$metadata);
+            return new ScalarNode(null, $metadata);
+        }
+
+        if (!$isKey
+            && $metadata->getAnchor() !== null
+            && $metadataToken !== null
+            && self::peek($context)->is(TokenType::SEQUENCE_INDICATOR)
+            && self::peek($context)->line === $metadataToken->line
+        ) {
+            throw new ParserException(
+                'Anchor cannot appear before a sequence entry on the same line',
+                self::peek($context)
+            );
         }
 
         if (!$isKey
