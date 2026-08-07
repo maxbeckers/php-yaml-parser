@@ -8,6 +8,7 @@ use MaxBeckers\YamlParser\Lexer\Token;
 use MaxBeckers\YamlParser\Lexer\TokenType;
 use MaxBeckers\YamlParser\Node\DocumentNode;
 use MaxBeckers\YamlParser\Node\NodeMetadata;
+use MaxBeckers\YamlParser\Node\ScalarNode;
 use MaxBeckers\YamlParser\Node\YamlNode;
 use MaxBeckers\YamlParser\Format\Version;
 
@@ -42,6 +43,17 @@ final class Parser
             $node = self::parseValue($context);
 
             $yamlNode->addDocument(new DocumentNode($node));
+
+            while (self::peek($context)->is(TokenType::DEDENT)) {
+                self::handleDedent($context);
+            }
+
+            if (!self::peek($context)->isOneOf(TokenType::EOF, TokenType::DOCUMENT_END, TokenType::DOCUMENT_START)) {
+                throw new ParserException(
+                    'Unexpected content after document node',
+                    self::peek($context)
+                );
+            }
         }
 
         return $yamlNode;
@@ -50,6 +62,12 @@ final class Parser
     public static function parseValue(ParserContext $context, $metadata = new NodeMetadata(), bool $isKey = false): NodeInterface
     {
         MetadataParser::parseMetadata($metadata, $context);
+
+        if (($metadata->getTag() !== null || $metadata->getAnchor() !== null)
+            && self::peek($context)->isOneOf(TokenType::EOF, TokenType::DOCUMENT_END, TokenType::FLOW_SEPARATOR, TokenType::MAPPING_END, TokenType::SEQUENCE_END, TokenType::DEDENT)
+        ) {
+            return new ScalarNode('',$metadata);
+        }
 
         foreach (self::$PARSERS as $parserClass) {
             if ($parserClass::supports($context)) {

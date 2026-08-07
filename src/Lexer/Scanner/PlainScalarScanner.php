@@ -12,6 +12,18 @@ final class PlainScalarScanner extends AbstractScanner
 {
     public static function scan(LexerContext $context, string $currentChar): bool
     {
+        if ($currentChar === "\t") {
+            $nextChar = $context->getInputPart(1, 1);
+            if (!$context->isInFlow()
+                && in_array($context->getMode(), [ContextMode::STREAM_START, ContextMode::DOCUMENT_START, ContextMode::BLOCK_KEY, ContextMode::BLOCK_VALUE], true)
+                && in_array($nextChar, ['[', '{', ']', '}', '#', "\n", "\r", ''], true)
+            ) {
+                $context->increasePositionInLine();
+
+                return true;
+            }
+        }
+
         if ('@' === $currentChar || '`' === $currentChar) {
             throw new LexerException(sprintf('Cannot start plain scalar with \'%s\': Reserved indicator in line %d, column %d', $currentChar, $context->getLine(), $context->getColumn()));
         }
@@ -22,17 +34,43 @@ final class PlainScalarScanner extends AbstractScanner
         }
 
         $charsToPossibleEnd = 0;
+        $isMultilineInput = false;
         do {
             $lastLineEnd = $charsToPossibleEnd;
             $charsToPossibleEnd += $context->getNumberOfCharsTill("\n\r#-:{}[],.", $charsToPossibleEnd);
             $currentLineLength = $charsToPossibleEnd - $lastLineEnd;
             $actualChar = $context->getInputPart(1, $charsToPossibleEnd);
             if ($actualChar === "\n" || $actualChar === "\r") {
+                $isMultilineInput = true;
                 do {
                     $lookAheadLine = 1;
                     if ($actualChar === "\r" && $context->getInputPart(1, $charsToPossibleEnd + 1) === "\n") {
                         $lookAheadLine++;
                     }
+                    $lineAheadOffset = $charsToPossibleEnd + $lookAheadLine;
+                    $lineAheadIndent = $context->getNumberOfCharsCount(" \t", $lineAheadOffset);
+                    $lineAheadFirstChar = $context->getInputPart(1, $lineAheadOffset + $lineAheadIndent);
+
+                    if (!$context->isInFlow()) {
+                        if ($context->getMode() === ContextMode::BLOCK_VALUE
+                            && $lineAheadFirstChar !== "\n"
+                            && $lineAheadFirstChar !== "\r"
+                            && $lineAheadFirstChar !== ''
+                            && $lineAheadFirstChar !== '#'
+                            && $lineAheadIndent <= $context->getCurrentIndent()
+                        ) {
+                            break 2;
+                        }
+
+                        if (self::isLikelyMappingEntry($context, $lineAheadOffset, $lineAheadIndent, true)) {
+                            if ($lineAheadIndent > $context->getCurrentIndent()) {
+                                throw new LexerException(sprintf('Invalid mapping indicator in plain scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
+                            }
+
+                            break 2;
+                        }
+                    }
+
                     $charsToPossibleEndLineAhead = $context->getNumberOfCharsTill("\n\r-:{}[],.?", $charsToPossibleEnd + $lookAheadLine);
                     $actualCharLineAhead = $context->getInputPart(1, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead);
 
@@ -48,8 +86,8 @@ final class PlainScalarScanner extends AbstractScanner
                     } elseif ($actualCharLineAhead === ',' && !$context->isInFlow()) {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                     } elseif ($actualCharLineAhead === '.') {
-                        $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
-                    } elseif ($actualCharLineAhead === ':' && $context->isInFlow() && $context->getLastToken()->isOneOf(TokenType::KEY_INDICATOR, TokenType::INDENT)) {
+                        $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead + 1;
+                    } elseif ($actualCharLineAhead === ':' && $context->isInFlow() && $context->getMode() === ContextMode::FLOW_MAPPING_KEY) {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                         break 2;
                     } elseif ($actualCharLineAhead === '-' && !in_array($context->getInputPart(1, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 1), [' ', "\n", "\r", '-'], true)) {
@@ -59,7 +97,7 @@ final class PlainScalarScanner extends AbstractScanner
                             break 2;
                         }
 
-                        $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
+                        $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead + 1;
                     } elseif ($context->isAtEndOfFile($charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead)) {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                         break 2;
@@ -73,14 +111,23 @@ final class PlainScalarScanner extends AbstractScanner
                 }
                 $charsToPossibleEnd++;
             } elseif ($actualChar === '-') {
-                if ($currentLineLength > 0 && $context->getNumberOfCharsCount(' ', $lastLineEnd) === $currentLineLength) {
+                $previousChar = $charsToPossibleEnd > 0 ? $context->getInputPart(1, $charsToPossibleEnd - 1) : '';
+                if ($currentLineLength > 0
+                    && $context->getNumberOfCharsCount(' ', $lastLineEnd) === $currentLineLength
+                    && in_array($previousChar, ['', ' ', "\t", "\n", "\r"], true)
+                ) {
                     break;
                 }
                 $charsToPossibleEnd++;
             } elseif ($actualChar === ':') {
                 $nextChar = $context->getInputPart(1, $charsToPossibleEnd + 1);
                 if (in_array($nextChar, [' ', "\t", "\n", "\r"], true)) {
+                    if (!$context->isInFlow() && $context->getMode() === ContextMode::BLOCK_VALUE && $charsToPossibleEnd > 0 && $isMultilineInput) {
+                        throw new LexerException(sprintf('Invalid mapping indicator in plain scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
+                    }
                     break;
+                } elseif (!$context->isInFlow() && $context->getMode() === ContextMode::BLOCK_VALUE && $nextChar === '#' && $charsToPossibleEnd > 0 && $isMultilineInput) {
+                    throw new LexerException(sprintf('Invalid mapping indicator in plain scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
                 } elseif ($context->isInFlow() && $nextChar === ',') {
                     break;
                 }
@@ -166,9 +213,9 @@ final class PlainScalarScanner extends AbstractScanner
         return true;
     }
 
-    private static function isLikelyMappingEntry(LexerContext $context, int $lineOffset, int $lineIndent): bool
+    private static function isLikelyMappingEntry(LexerContext $context, int $lineOffset, int $lineIndent, bool $allowIndented = false): bool
     {
-        if ($context->isInFlow() || $lineIndent > $context->getCurrentIndent()) {
+        if ($context->isInFlow() || (!$allowIndented && $lineIndent > $context->getCurrentIndent())) {
             return false;
         }
 

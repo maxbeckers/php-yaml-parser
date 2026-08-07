@@ -62,7 +62,7 @@ final class IndentationScanner extends AbstractScanner
                 }
             }
         } elseif ($context->getMode() === ContextMode::FLOW_SEQUENCE) {
-            $nextBreakingChar = $context->getNumberOfCharsCount("\n\r ");
+            $nextBreakingChar = $context->getNumberOfCharsCount("\n\r \t");
             $breakingChar = $context->getInputPart(1, $nextBreakingChar);
             if (in_array($breakingChar, ["\r", "\n", ']'], true)) {
                 $context->increasePositionInLine($nextBreakingChar);

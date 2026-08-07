@@ -2,6 +2,7 @@
 
 namespace MaxBeckers\YamlParser\Lexer\Scanner;
 
+use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Lexer\ContextMode;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Lexer\Token;
@@ -28,6 +29,12 @@ final class SingleQuotedScalarScanner extends AbstractScanner
             }
             $charsToPossibleEnd += 2;
         } while (true);
+
+        if ($context->getInputPart(1, $charsToPossibleEnd + 1) !== "'") {
+            throw new LexerException(
+                sprintf('Unclosed single-quoted scalar at line %d, column %d', $context->getLine(), $context->getColumn())
+            );
+        }
 
         $scalar = $context->getInputPart($charsToPossibleEnd + 2);
         $lines = preg_split('/\r\n|\r|\n/', $scalar);

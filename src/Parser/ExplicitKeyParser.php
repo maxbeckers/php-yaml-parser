@@ -34,13 +34,30 @@ final class ExplicitKeyParser
         }
         $context->setIsExplicitKey(false);
 
+        if ($key instanceof ScalarNode) {
+            $combinedKey = $key->getValue();
+            $didCombine = false;
+
+            while (Parser::peek($context)->is(TokenType::PLAIN_SCALAR)
+                && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR)
+            ) {
+                $combinedKey .= ' ' . Parser::peek($context)->value;
+                Parser::advance($context);
+                $didCombine = true;
+            }
+
+            if ($didCombine) {
+                $key = new ScalarNode($combinedKey, $key->getMetadata());
+            }
+        }
+
         if (Parser::peek($context)->is(TokenType::DEDENT)) {
             if ($context->getIndentationLevel() !== $startIndentLevel) {
                 Parser::handleDedent($context);
             }
         }
 
-        if (Parser::peek($context)->is(TokenType::EXPLICIT_KEY)) {
+        if (Parser::peek($context)->isOneOf(TokenType::EXPLICIT_KEY, TokenType::DEDENT, TokenType::SEQUENCE_END, TokenType::MAPPING_END, TokenType::DOCUMENT_END, TokenType::EOF)) {
             $value = new ScalarNode(null);
         } else {
             if (Parser::peek($context)->is(TokenType::KEY_INDICATOR)) {

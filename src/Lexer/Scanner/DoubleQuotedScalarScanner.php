@@ -38,6 +38,13 @@ final class DoubleQuotedScalarScanner extends AbstractScanner
 
             $charsToPossibleEnd++;
         } while (true);
+
+        if ($context->getInputPart(1, $charsToPossibleEnd + 1) !== '"') {
+            throw new LexerException(
+                sprintf('Unclosed double-quoted scalar at line %d, column %d', $context->getLine(), $context->getColumn())
+            );
+        }
+
         $scalar = $context->getInputPart($charsToPossibleEnd + 2);
 
         $lines = preg_split('/\r\n|\r|\n/', $scalar);

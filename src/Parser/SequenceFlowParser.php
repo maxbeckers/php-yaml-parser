@@ -19,7 +19,7 @@ final class SequenceFlowParser implements TokenParserInterface
     public static function parse(ParserContext $context, NodeMetadata $metadata = new NodeMetadata(), bool $isKey = false): NodeInterface
     {
         $context->enterFlowContext();
-        Parser::advance($context);
+        $startToken = Parser::advance($context);
         $startIndentLevel = $context->getIndentationLevel();
         $sequence = new SequenceNode([], $metadata);
 
@@ -27,6 +27,17 @@ final class SequenceFlowParser implements TokenParserInterface
             if (Parser::isAtEnd($context)) {
                 throw new ParserException(
                     'Unexpected end of input in flow sequence',
+                    Parser::peek($context)
+                );
+            }
+
+            if ($startToken->column > 0
+                && Parser::peek($context)->line > $startToken->line
+                && Parser::peek($context)->column === 0
+                && !Parser::peek($context)->is(TokenType::SEQUENCE_END)
+            ) {
+                throw new ParserException(
+                    'Invalid indentation in flow sequence',
                     Parser::peek($context)
                 );
             }
@@ -43,10 +54,29 @@ final class SequenceFlowParser implements TokenParserInterface
                 continue;
             }
 
+            $nextToken = Parser::peek($context);
+            if ($nextToken->is(TokenType::PLAIN_SCALAR) && $nextToken->value === '-') {
+                throw new ParserException(
+                    "Bare '-' is not allowed in flow sequence",
+                    $nextToken
+                );
+            }
+
             $sequence->addItem(Parser::parseValue($context));
 
             if (Parser::peek($context)->is(TokenType::FLOW_SEPARATOR)) {
-                Parser::advance($context);
+                $separator = Parser::advance($context);
+
+                if ($startToken->column > 0
+                    && Parser::peek($context)->line > $separator->line
+                    && Parser::peek($context)->column <= 1
+                    && !Parser::peek($context)->is(TokenType::SEQUENCE_END)
+                ) {
+                    throw new ParserException(
+                        'Invalid indentation in flow sequence',
+                        Parser::peek($context)
+                    );
+                }
 
                 if (Parser::peek($context)->is(TokenType::DEDENT)) {
                     Parser::handleDedent($context);
@@ -74,7 +104,18 @@ final class SequenceFlowParser implements TokenParserInterface
             );
         }
 
-        Parser::advance($context);
+        $endToken = Parser::advance($context);
+
+        if (false === $isKey
+            && Parser::peek($context)->is(TokenType::KEY_INDICATOR)
+            && !$context->isExplicitKey()
+            && $startToken->line !== $endToken->line
+        ) {
+            throw new ParserException(
+                'Flow collection keys cannot span multiple lines',
+                Parser::peek($context)
+            );
+        }
 
         while (Parser::peek($context)->is(TokenType::DEDENT)
             && $context->getIndentationLevel() > $startIndentLevel
@@ -83,6 +124,8 @@ final class SequenceFlowParser implements TokenParserInterface
         }
 
         if (false === $isKey && Parser::peek($context)->is(TokenType::KEY_INDICATOR) && !$context->isExplicitKey()) {
+            $context->exitFlowContext();
+
             return MappingParser::parse(context: $context, explicitKey: $sequence);
         }
 

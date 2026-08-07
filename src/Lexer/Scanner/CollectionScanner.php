@@ -2,6 +2,7 @@
 
 namespace MaxBeckers\YamlParser\Lexer\Scanner;
 
+use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Lexer\ContextMode;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Lexer\TokenType;
@@ -47,7 +48,19 @@ final class CollectionScanner extends AbstractScanner
         }
 
         if ($currentChar === ':') {
-            if (in_array($context->getMode(), [ContextMode::FLOW_MAPPING_KEY, ContextMode::BLOCK_SEQUENCE_ENTRY, ContextMode::FLOW_SEQUENCE], true) && in_array($context->getInputPart(1, 1), [':', '/'], true)) {
+            if (!$context->isInFlow()
+                && in_array($context->getMode(), [ContextMode::BLOCK_KEY, ContextMode::EXPLICIT_KEY, ContextMode::BLOCK_VALUE], true)
+                && !in_array($context->getInputPart(1, 1), [' ', "\t", "\n", "\r", ''], true)
+            ) {
+                return false;
+            }
+            if (in_array($context->getMode(), [ContextMode::BLOCK_SEQUENCE_ENTRY, ContextMode::FLOW_SEQUENCE], true) && in_array($context->getInputPart(1, 1), [':', '/'], true)) {
+                return false;
+            }
+            if ($context->isInFlow()
+                && $context->getMode() === ContextMode::FLOW_MAPPING_VALUE
+                && !in_array($context->getInputPart(1, 1), [' ', "\t", "\n", "\r", ',', ']', '}', ''], true)
+            ) {
                 return false;
             }
             self::handleFlowColon($context);
@@ -56,6 +69,14 @@ final class CollectionScanner extends AbstractScanner
         }
 
         if ($currentChar === '?') {
+            if (in_array($context->getMode(), [ContextMode::BLOCK_KEY, ContextMode::BLOCK_VALUE, ContextMode::EXPLICIT_KEY], true)
+                && !in_array($context->getInputPart(1, 1), [' ', "\t", "\n", "\r", ''], true)
+            ) {
+                return false;
+            }
+            if ($context->isInFlow() && !in_array($context->getInputPart(1, 1), [' ', "\t", "\n", "\r", ',', ']', '}', ''], true)) {
+                return false;
+            }
             self::handleExplicitKey($context);
 
             return true;
@@ -148,6 +169,10 @@ final class CollectionScanner extends AbstractScanner
 
     private static function handleExplicitKey(LexerContext $context): void
     {
+        if ($context->getInputPart(1, 1) === "\t") {
+            throw new LexerException(sprintf('Tab character found in block indentation at line %d, column %d', $context->getLine(), $context->getColumn()));
+        }
+
         $context->addToken(self::createToken($context, TokenType::EXPLICIT_KEY, '?'));
         $spaces = $context->getNumberOfCharsCount(' ', 1);
         $context->increasePositionInLine(1 + $spaces);

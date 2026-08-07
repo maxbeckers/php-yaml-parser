@@ -74,7 +74,7 @@ final class ScalarParser implements TokenParserInterface
 
         $isMultiline = $token->getMetadata()[Token::METADATA_WAS_MULTILINE_INPUT] ?? false;
         $flowQuotedOk = $context->isFlowContext()
-            && $token->isOneOf(TokenType::DOUBLE_QUOTED_SCALAR, TokenType::SINGLE_QUOTED_SCALAR);
+            && $token->isOneOf(TokenType::DOUBLE_QUOTED_SCALAR, TokenType::SINGLE_QUOTED_SCALAR, TokenType::PLAIN_SCALAR);
         if ($isMultiline && !$flowQuotedOk) {
             throw new ParserException(
                 'Multiline scalars are not allowed as mapping keys.',

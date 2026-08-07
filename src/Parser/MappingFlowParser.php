@@ -20,7 +20,7 @@ final class MappingFlowParser implements TokenParserInterface
     public static function parse(ParserContext $context, NodeMetadata $metadata = new NodeMetadata(), bool $isKey = false): NodeInterface
     {
         $context->enterFlowContext();
-        Parser::advance($context);
+        $startToken = Parser::advance($context);
         $mapping = new MappingNode([], $metadata);
 
         $indentLevel = $context->getIndentationLevel();
@@ -28,6 +28,17 @@ final class MappingFlowParser implements TokenParserInterface
             if (Parser::isAtEnd($context)) {
                 throw new ParserException(
                     'Unexpected end of input in flow mapping',
+                    Parser::peek($context)
+                );
+            }
+
+            if ($startToken->column > 0
+                && Parser::peek($context)->line > $startToken->line
+                && Parser::peek($context)->column === 0
+                && !Parser::peek($context)->is(TokenType::MAPPING_END)
+            ) {
+                throw new ParserException(
+                    'Invalid indentation in flow mapping',
                     Parser::peek($context)
                 );
             }
@@ -56,11 +67,39 @@ final class MappingFlowParser implements TokenParserInterface
 
             $metadata = new NodeMetadata();
             MetadataParser::parseMetadata($metadata, $context);
+            $keyStartLine = Parser::peek($context)->line;
             if (Parser::peek($context)->isScalar()) {
                 $key = ScalarParser::parse($context, $metadata, true);
             } else {
                 $key = Parser::parseValue($context, $metadata, true);
             }
+
+            $lineBeforeColon = $keyStartLine;
+            $hasIndentBeforeColon = false;
+            while (Parser::peek($context)->is(TokenType::INDENT)) {
+                $hasIndentBeforeColon = true;
+                $indentLevel++;
+                Parser::handleIndent($context);
+            }
+
+            if (!Parser::peek($context)->isOneOf(TokenType::FLOW_SEPARATOR, TokenType::MAPPING_END, TokenType::KEY_INDICATOR)) {
+                throw new ParserException(
+                    "Expected ':' in flow mapping",
+                    Parser::peek($context)
+                );
+            }
+
+            if ($startToken->column > 0
+                && Parser::peek($context)->is(TokenType::KEY_INDICATOR)
+                && Parser::peek($context)->line > $lineBeforeColon
+                && !$hasIndentBeforeColon
+            ) {
+                throw new ParserException(
+                    'Invalid indentation in flow mapping',
+                    Parser::peek($context)
+                );
+            }
+
             if (Parser::peek($context)->isOneOf(TokenType::FLOW_SEPARATOR, TokenType::MAPPING_END)) {
                 $mapping->addPair($key, new ScalarNode(null));
             } else {
@@ -122,7 +161,18 @@ final class MappingFlowParser implements TokenParserInterface
             );
         }
 
-        Parser::advance($context);
+        $endToken = Parser::advance($context);
+
+        if (false === $isKey
+            && Parser::peek($context)->is(TokenType::KEY_INDICATOR)
+            && !$context->isExplicitKey()
+            && $startToken->line !== $endToken->line
+        ) {
+            throw new ParserException(
+                'Flow collection keys cannot span multiple lines',
+                Parser::peek($context)
+            );
+        }
 
         if (false === $isKey && Parser::peek($context)->is(TokenType::KEY_INDICATOR) && !$context->isExplicitKey()) {
             return MappingParser::parse(context: $context, explicitKey: $mapping);
