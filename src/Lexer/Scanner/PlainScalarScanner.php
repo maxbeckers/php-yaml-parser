@@ -86,6 +86,14 @@ final class PlainScalarScanner extends AbstractScanner
                             break 2;
                         }
 
+                        if ($context->getMode() === ContextMode::BLOCK_SEQUENCE_ENTRY
+                            && $lineAheadIndent < $context->getCurrentIndent()
+                            && in_array($context->getInputPart(1, $charsToPossibleEnd), ["\n", "\r"], true)
+                            && !in_array($lineAheadFirstChar, ['', "\n", "\r", '#', '-'], true)
+                        ) {
+                            break 2;
+                        }
+
                         if (self::isLikelyMappingEntry($context, $lineAheadOffset, $lineAheadIndent, true)) {
 
                             break 2;

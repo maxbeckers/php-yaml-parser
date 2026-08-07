@@ -9,16 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class YamlTestSuiteTest extends TestCase
 {
-    private const SKIPPED_TESTS = [
-        '236B', '26DV', '2EBW',
-        '62EZ', '6S55',
-        '9CWY', 'BD7L',
-        'JY7Z',
-        'P2EQ',
-        'TD5N',
-        'ZL4Z',
-    ];
-
     private YamlParser $yamlParser;
 
     protected function setUp(): void
@@ -31,14 +21,6 @@ class YamlTestSuiteTest extends TestCase
     {
         if ('' === $file) {
             $this->markTestSkipped('The YAML test suite is not available: ' . $testName);
-        }
-
-        if (in_array($shortcode, self::SKIPPED_TESTS, true)) {
-            if ($isErrorExpected) {
-                $this->markTestSkipped('Test "' . $testName . '" is skipped, as error was expected but not yet supported.');
-            } else {
-                $this->markTestSkipped('Test "' . $testName . '" is skipped, as it is not yet supported.');
-            }
         }
 
         if ($isErrorExpected) {

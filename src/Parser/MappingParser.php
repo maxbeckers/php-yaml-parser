@@ -96,7 +96,7 @@ final class MappingParser implements TokenParserInterface
             } elseif (!$context->isFlowContext()
                 && !$context->isExplicitKey()
                 && $keyLine === $keyIndicatorToken->line
-                && Parser::peek($context)->is(TokenType::PLAIN_SCALAR)
+                && Parser::peek($context)->isScalar()
                 && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR)
                 && Parser::peek($context)->line === $keyIndicatorToken->line
                 && Parser::peek($context, 1)->line === $keyIndicatorToken->line
@@ -175,6 +175,18 @@ final class MappingParser implements TokenParserInterface
                 if ($isIndented && Parser::peek($context)->is(TokenType::DEDENT)) {
                     Parser::handleDedent($context);
                 }
+            }
+
+            // Reject a new mapping key that appears on the same line as the current key indicator
+            if (!$context->isFlowContext()
+                && !$context->isExplicitKey()
+                && Parser::peek($context)->isScalar()
+                && Parser::peek($context)->line === $keyIndicatorToken->line
+            ) {
+                throw new ParserException(
+                    'Unexpected content on same line as mapping value',
+                    Parser::peek($context)
+                );
             }
 
             $mapping->addPair($key, $value);

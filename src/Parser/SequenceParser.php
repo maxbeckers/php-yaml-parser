@@ -4,6 +4,7 @@ namespace MaxBeckers\YamlParser\Parser;
 
 use MaxBeckers\YamlParser\Api\NodeInterface;
 use MaxBeckers\YamlParser\Api\TokenParserInterface;
+use MaxBeckers\YamlParser\Exception\ParserException;
 use MaxBeckers\YamlParser\Lexer\TokenType;
 use MaxBeckers\YamlParser\Node\NodeMetadata;
 use MaxBeckers\YamlParser\Node\ScalarNode;
@@ -58,6 +59,17 @@ final class SequenceParser implements TokenParserInterface
                 && Parser::peek($context, 1)->column <= $sequenceToken->column
             ) {
                 Parser::handleIndent($context);
+            }
+
+            // Reject a subsequent sequence entry on the same line as the current one
+            if (!$context->isFlowContext()
+                && Parser::peek($context)->is(TokenType::SEQUENCE_INDICATOR)
+                && Parser::peek($context)->line === $sequenceToken->line
+            ) {
+                throw new ParserException(
+                    'A sequence entry cannot start on the same line as a previous entry',
+                    Parser::peek($context)
+                );
             }
         }
 
