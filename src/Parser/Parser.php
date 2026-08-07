@@ -81,6 +81,19 @@ final class Parser
             return new ScalarNode('',$metadata);
         }
 
+        if (!$isKey
+            && self::peek($context)->is(TokenType::ALIAS)
+            && self::peek($context, 1)->is(TokenType::KEY_INDICATOR)
+        ) {
+            $node = MappingParser::parse($context, $metadata, $isKey);
+
+            if ($metadataIndentWrapped && self::peek($context)->is(TokenType::DEDENT)) {
+                self::handleDedent($context);
+            }
+
+            return $node;
+        }
+
         foreach (self::$PARSERS as $parserClass) {
             if ($parserClass::supports($context)) {
                 $node = $parserClass::parse($context, $metadata, $isKey);

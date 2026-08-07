@@ -76,6 +76,17 @@ final class ExplicitKeyParser
         } else {
             if (Parser::peek($context)->is(TokenType::KEY_INDICATOR)) {
                 Parser::advance($context);
+
+                if (Parser::peek($context)->isOneOf(TokenType::EXPLICIT_KEY, TokenType::DEDENT, TokenType::SEQUENCE_END, TokenType::MAPPING_END, TokenType::DOCUMENT_END, TokenType::EOF)) {
+                    $value = new ScalarNode(null);
+                    $mappingNode->addPair($key, $value);
+
+                    if (Parser::peek($context)->is(TokenType::DEDENT) && $context->getIndentationLevel() !== $startIndentLevel) {
+                        Parser::handleDedent($context);
+                    }
+
+                    return;
+                }
             }
 
             $isIndented = false;

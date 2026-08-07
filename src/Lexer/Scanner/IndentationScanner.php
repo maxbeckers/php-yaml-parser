@@ -112,6 +112,51 @@ final class IndentationScanner extends AbstractScanner
                 $context->popIndent();
                 $context->addToken(self::createToken($context, TokenType::DEDENT));
             }
+
+            if ($context->getCurrentIndent() !== $spaces
+                && !$context->isInFlow()
+                && in_array($context->getMode(), [ContextMode::BLOCK_VALUE, ContextMode::BLOCK_KEY], true)
+            ) {
+                throw new LexerException(sprintf('Invalid indentation level at line %d, column %d', $context->getLine(), $context->getColumn()));
+            }
+        }
+
+        if ($spaces > $currentIndent
+            && !$context->isInFlow()
+            && $context->getMode() === ContextMode::BLOCK_VALUE
+            && !$context->getLastToken()->isOneOf(
+                TokenType::KEY_INDICATOR,
+                TokenType::ANCHOR,
+                TokenType::TAG,
+                TokenType::LITERAL_SCALAR,
+                TokenType::FOLDED_SCALAR
+            )
+        ) {
+            throw new LexerException(sprintf('Invalid indentation level at line %d, column %d', $context->getLine(), $context->getColumn()));
+        }
+
+        if ($spaces > $currentIndent
+            && !$context->isInFlow()
+            && $context->getMode() === ContextMode::BLOCK_SEQUENCE_ENTRY
+            && !$context->getLastToken()->isOneOf(
+                TokenType::SEQUENCE_INDICATOR,
+                TokenType::KEY_INDICATOR,
+                TokenType::ANCHOR,
+                TokenType::TAG,
+                TokenType::LITERAL_SCALAR,
+                TokenType::FOLDED_SCALAR,
+                TokenType::DOUBLE_QUOTED_SCALAR,
+                TokenType::SINGLE_QUOTED_SCALAR
+            )
+        ) {
+            $lineLength = $context->getNumberOfCharsTill("\n\r");
+            $line = ltrim($context->getInputPart($lineLength), " \t");
+            $colonPos = strpos($line, ':');
+            $nextCharAfterColon = $colonPos === false ? '' : ($line[$colonPos + 1] ?? '');
+
+            if (!($colonPos !== false && in_array($nextCharAfterColon, ['', ' ', "\t"], true))) {
+            throw new LexerException(sprintf('Invalid indentation level at line %d, column %d', $context->getLine(), $context->getColumn()));
+            }
         }
 
         if ($context->getCurrentIndent() < $spaces) {

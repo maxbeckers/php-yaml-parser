@@ -48,6 +48,8 @@ final class PlainScalarScanner extends AbstractScanner
             $context->pushMode(ContextMode::BLOCK_KEY);
         }
 
+        $startedAfterKeyIndicator = $context->getLastToken()->is(TokenType::KEY_INDICATOR);
+
         $charsToPossibleEnd = 0;
         $isMultilineInput = false;
         do {
@@ -78,9 +80,6 @@ final class PlainScalarScanner extends AbstractScanner
                         }
 
                         if (self::isLikelyMappingEntry($context, $lineAheadOffset, $lineAheadIndent, true)) {
-                            if ($lineAheadIndent > $context->getCurrentIndent()) {
-                                throw new LexerException(sprintf('Invalid mapping indicator in plain scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
-                            }
 
                             break 2;
                         }
@@ -105,6 +104,24 @@ final class PlainScalarScanner extends AbstractScanner
                     } elseif ($actualCharLineAhead === ':' && $context->isInFlow() && $context->getMode() === ContextMode::FLOW_MAPPING_KEY) {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                         break 2;
+                    } elseif ($actualCharLineAhead === '-'
+                        && !$context->isInFlow()
+                        && $context->getMode() === ContextMode::BLOCK_SEQUENCE_ENTRY
+                        && !$startedAfterKeyIndicator
+                        && $context->getInputPart(1, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 1) === ' '
+                        && $lineAheadIndent > 0
+                        && ($lineAheadIndent + 1) === $context->getCurrentIndent()
+                        && !in_array(
+                            $context->getInputPart(
+                                1,
+                                $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 2
+                                + $context->getNumberOfCharsCount(' \t', $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 2)
+                            ),
+                            ['-', '?', ':'],
+                            true
+                        )
+                    ) {
+                        $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead + 1;
                     } elseif ($actualCharLineAhead === '-' && !in_array($context->getInputPart(1, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 1), [' ', "\n", "\r", '-'], true)) {
                         $lineAheadOffset = $charsToPossibleEnd + $lookAheadLine;
                         $lineAheadIndent = $context->getNumberOfCharsCount(" \t", $lineAheadOffset);

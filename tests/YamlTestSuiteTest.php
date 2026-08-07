@@ -11,12 +11,12 @@ class YamlTestSuiteTest extends TestCase
 {
     private const SKIPPED_TESTS = [
         '236B', '26DV', '2AUY', '2EBW', '2XXW', '3HFZ', '57H4',
-        '5TRB', '62EZ', '6BFJ', '6JWB', '6PBE', '6S55', '7BMT', '7W2P',
-        '93JH', '9CWY', '9HCY', '9KAX', '9KBC', '9MMA', '9MQT-01', 'A2M4', 'AB8U', 'B63P', 'BD7L',
-        'BU8L', 'CXX2', 'DMG6', 'EB22', 'EW3V', 'F2C7',
-        'G9HC', 'GT5M', 'JTV5', 'JY7Z', 'KK5P',
-        'LHL4', 'M5DY', 'MUS6-01', 'N4JP', 'P2EQ', 'PW8X',
-        'QB6E', 'RHX7', 'RXY3', 'SR86', 'SU74', 'SY6V', 'TD5N', 'U3XV', 'U44R', 'U99R',
+        '5TRB', '62EZ', '6BFJ', '6JWB', '6S55', '7BMT',
+        '9CWY', '9HCY', '9KAX', '9KBC', '9MMA', '9MQT-01', 'B63P', 'BD7L',
+        'BU8L', 'CXX2', 'EB22', 'F2C7',
+        'G9HC', 'GT5M', 'JY7Z',
+        'LHL4', 'MUS6-01', 'P2EQ', 'PW8X',
+        'RHX7', 'RXY3', 'SR86', 'SU74', 'SY6V', 'TD5N', 'U3XV', 'U99R',
         'UT92',
         'ZL4Z',
     ];

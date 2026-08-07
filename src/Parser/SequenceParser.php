@@ -45,6 +45,13 @@ final class SequenceParser implements TokenParserInterface
                 }
                 Parser::handleDedent($context);
             }
+
+            while (Parser::peek($context)->is(TokenType::INDENT)
+                && Parser::peek($context, 1)->is(TokenType::SEQUENCE_INDICATOR)
+                && Parser::peek($context, 1)->column <= $sequenceToken->column
+            ) {
+                Parser::handleIndent($context);
+            }
         }
 
         return $sequence;

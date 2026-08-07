@@ -61,6 +61,13 @@ final class DoubleQuotedScalarScanner extends AbstractScanner
                     throw new LexerException(sprintf('Tab character found in block indentation at line %d, column %d', $context->getLine(), $context->getColumn()));
                 }
 
+                if ($context->getMode() === ContextMode::BLOCK_VALUE
+                    && $line !== ''
+                    && !in_array($line[0], [' ', "\t"], true)
+                ) {
+                    throw new LexerException(sprintf('Invalid indentation in double-quoted scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
+                }
+
                 $line = trim($line);
                 $context->increaseLine();
             }
