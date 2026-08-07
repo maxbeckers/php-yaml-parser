@@ -61,7 +61,7 @@ final class Parser
 
     public static function parseValue(ParserContext $context, $metadata = new NodeMetadata(), bool $isKey = false): NodeInterface
     {
-        $previousToken = Parser::peek($context, -1);
+        $previousToken = self::peek($context, -1);
         $metadataToken = MetadataParser::parseMetadata($metadata, $context);
 
         if (!$isKey
@@ -84,13 +84,13 @@ final class Parser
             && $metadataToken !== null
             && $metadataToken->line === $previousToken->line
             && $metadataToken->column > 0
-            && Parser::peek($context)->is(TokenType::PLAIN_SCALAR)
-            && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR)
-            && Parser::peek($context)->line === $metadataToken->line
+            && self::peek($context)->is(TokenType::PLAIN_SCALAR)
+            && self::peek($context, 1)->is(TokenType::KEY_INDICATOR)
+            && self::peek($context)->line === $metadataToken->line
         ) {
             throw new ParserException(
                 'Anchor cannot start an implicit mapping key on the document start line',
-                Parser::peek($context)
+                self::peek($context)
             );
         }
 

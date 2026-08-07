@@ -153,10 +153,10 @@ final class MappingParser implements TokenParserInterface
                     ) {
                         // Allow compact mapping in sequence entries to continue with another mapping key.
                     } else {
-                    throw new ParserException(
-                        'Unexpected indented content after scalar value in block mapping',
-                        Parser::peek($context)
-                    );
+                        throw new ParserException(
+                            'Unexpected indented content after scalar value in block mapping',
+                            Parser::peek($context)
+                        );
                     }
                 }
 

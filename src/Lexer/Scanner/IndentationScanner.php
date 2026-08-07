@@ -62,7 +62,8 @@ final class IndentationScanner extends AbstractScanner
                 }
             }
         } elseif ($context->getMode() === ContextMode::FLOW_SEQUENCE) {
-            $nextBreakingChar = $context->getNumberOfCharsCount("\n\r \t");$flowWhitespace = $context->getInputPart($nextBreakingChar);
+            $nextBreakingChar = $context->getNumberOfCharsCount("\n\r \t");
+            $flowWhitespace = $context->getInputPart($nextBreakingChar);
             $breakingChar = $context->getInputPart(1, $nextBreakingChar);
             if (str_contains($flowWhitespace, "\n") || str_contains($flowWhitespace, "\r") || in_array($breakingChar, ["\r", "\n", ']'], true)) {
                 $context->increasePositionInLine($nextBreakingChar);
@@ -155,7 +156,7 @@ final class IndentationScanner extends AbstractScanner
             $nextCharAfterColon = $colonPos === false ? '' : ($line[$colonPos + 1] ?? '');
 
             if (!($colonPos !== false && in_array($nextCharAfterColon, ['', ' ', "\t"], true))) {
-            throw new LexerException(sprintf('Invalid indentation level at line %d, column %d', $context->getLine(), $context->getColumn()));
+                throw new LexerException(sprintf('Invalid indentation level at line %d, column %d', $context->getLine(), $context->getColumn()));
             }
         }
 
