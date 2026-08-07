@@ -57,6 +57,10 @@ final class DoubleQuotedScalarScanner extends AbstractScanner
             }
 
             if ($key > 0) {
+                if ($context->getMode() === ContextMode::BLOCK_VALUE && str_starts_with($line, "\t")) {
+                    throw new LexerException(sprintf('Tab character found in block indentation at line %d, column %d', $context->getLine(), $context->getColumn()));
+                }
+
                 $line = trim($line);
                 $context->increaseLine();
             }

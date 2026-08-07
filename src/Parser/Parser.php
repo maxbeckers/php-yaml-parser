@@ -63,15 +63,33 @@ final class Parser
     {
         MetadataParser::parseMetadata($metadata, $context);
 
+        $metadataIndentWrapped = false;
+        if (($metadata->getTag() !== null || $metadata->getAnchor() !== null)
+            && self::peek($context)->is(TokenType::INDENT)
+        ) {
+            self::handleIndent($context);
+            $metadataIndentWrapped = true;
+        }
+
         if (($metadata->getTag() !== null || $metadata->getAnchor() !== null)
             && self::peek($context)->isOneOf(TokenType::EOF, TokenType::DOCUMENT_END, TokenType::FLOW_SEPARATOR, TokenType::MAPPING_END, TokenType::SEQUENCE_END, TokenType::DEDENT)
         ) {
+            if ($metadataIndentWrapped && self::peek($context)->is(TokenType::DEDENT)) {
+                self::handleDedent($context);
+            }
+
             return new ScalarNode('',$metadata);
         }
 
         foreach (self::$PARSERS as $parserClass) {
             if ($parserClass::supports($context)) {
-                return $parserClass::parse($context, $metadata, $isKey);
+                $node = $parserClass::parse($context, $metadata, $isKey);
+
+                if ($metadataIndentWrapped && self::peek($context)->is(TokenType::DEDENT)) {
+                    self::handleDedent($context);
+                }
+
+                return $node;
             }
         }
 

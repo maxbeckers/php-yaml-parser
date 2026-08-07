@@ -51,13 +51,27 @@ final class ExplicitKeyParser
             }
         }
 
-        if (Parser::peek($context)->is(TokenType::DEDENT)) {
-            if ($context->getIndentationLevel() !== $startIndentLevel) {
-                Parser::handleDedent($context);
-            }
+        $dedentOffset = 0;
+        while (Parser::peek($context, $dedentOffset)->is(TokenType::DEDENT)) {
+            $dedentOffset++;
         }
 
-        if (Parser::peek($context)->isOneOf(TokenType::EXPLICIT_KEY, TokenType::DEDENT, TokenType::SEQUENCE_END, TokenType::MAPPING_END, TokenType::DOCUMENT_END, TokenType::EOF)) {
+        $hasValueIndicatorAfterDedent = Parser::peek($context, $dedentOffset)->is(TokenType::KEY_INDICATOR);
+        if ($hasValueIndicatorAfterDedent) {
+            while (Parser::peek($context)->is(TokenType::DEDENT)
+                && $context->getIndentationLevel() > $startIndentLevel
+            ) {
+                Parser::handleDedent($context);
+            }
+        } elseif (Parser::peek($context)->is(TokenType::DEDENT)
+            && $context->getIndentationLevel() !== $startIndentLevel
+        ) {
+            Parser::handleDedent($context);
+        }
+
+        if (!$hasValueIndicatorAfterDedent
+            && Parser::peek($context)->isOneOf(TokenType::EXPLICIT_KEY, TokenType::DEDENT, TokenType::SEQUENCE_END, TokenType::MAPPING_END, TokenType::DOCUMENT_END, TokenType::EOF)
+        ) {
             $value = new ScalarNode(null);
         } else {
             if (Parser::peek($context)->is(TokenType::KEY_INDICATOR)) {

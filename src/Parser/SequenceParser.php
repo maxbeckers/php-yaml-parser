@@ -22,14 +22,17 @@ final class SequenceParser implements TokenParserInterface
 
         $startIndentLevel = $context->getIndentationLevel();
         while (!Parser::isAtEnd($context) && Parser::peek($context)->is(TokenType::SEQUENCE_INDICATOR)) {
-            Parser::advance($context);
+            $sequenceToken = Parser::advance($context);
             while (Parser::peek($context)->is(TokenType::INDENT)) {
                 Parser::handleIndent($context);
             }
 
             $metadata = new NodeMetadata();
             MetadataParser::parseMetadata($metadata, $context);
-            if (Parser::peek($context)->is(TokenType::DEDENT)) {
+            if (Parser::peek($context)->is(TokenType::DEDENT)
+                || (Parser::peek($context)->is(TokenType::SEQUENCE_INDICATOR)
+                    && Parser::peek($context)->line > $sequenceToken->line)
+            ) {
                 $item = new ScalarNode(null);
             } else {
                 $item = Parser::parseValue($context, $metadata);

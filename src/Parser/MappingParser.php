@@ -78,6 +78,11 @@ final class MappingParser implements TokenParserInterface
                 break;
             }
 
+            if (Parser::peek($context)->is(TokenType::DEDENT)) {
+                $mapping->addPair($key, new ScalarNode(null));
+                continue;
+            }
+
             if (Parser::peek($context)->isScalar()
                 && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR)
                 && !$context->isExplicitKey()

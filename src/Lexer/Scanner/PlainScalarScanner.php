@@ -13,6 +13,21 @@ final class PlainScalarScanner extends AbstractScanner
     public static function scan(LexerContext $context, string $currentChar): bool
     {
         if ($currentChar === "\t") {
+            if ($context->getMode() === ContextMode::BLOCK_SEQUENCE_ENTRY) {
+                $nextChar = $context->getInputPart(1, 1);
+                $afterNextChar = $context->getInputPart(1, 2);
+                if ($nextChar === '-'
+                    && in_array($afterNextChar, ['', ' ', "\t", "\n", "\r", '#'], true)
+                ) {
+                    throw new LexerException(sprintf('Tab character found in block indentation at line %d, column %d', $context->getLine(), $context->getColumn()));
+                }
+
+                $tabAndSpaceCount = 1 + $context->getNumberOfCharsCount(" \t", 1);
+                $context->increasePositionInLine($tabAndSpaceCount);
+
+                return true;
+            }
+
             $nextChar = $context->getInputPart(1, 1);
             if (!$context->isInFlow()
                 && in_array($context->getMode(), [ContextMode::STREAM_START, ContextMode::DOCUMENT_START, ContextMode::BLOCK_KEY, ContextMode::BLOCK_VALUE], true)
@@ -165,6 +180,41 @@ final class PlainScalarScanner extends AbstractScanner
         $scalar = $context->getInputPart($charsToPossibleEnd);
 
         $lines = preg_split('/\r\n|\r|\n/', $scalar);
+
+        $commentSeen = false;
+        $blankSeenBeforeComment = false;
+        $inlineStart = trim($lines[0] ?? '') !== '';
+        $backOffset = -1;
+        $prevChar = $context->getInputPart(1, $backOffset);
+        while (in_array($prevChar, [' ', "\t"], true)) {
+            $backOffset--;
+            $prevChar = $context->getInputPart(1, $backOffset);
+        }
+
+        $startsOnFollowingLine = in_array($prevChar, ["\n", "\r"], true);
+        $strictCommentContext = $context->getLastToken()->isOneOf(TokenType::KEY_INDICATOR, TokenType::DOCUMENT_START)
+            && !$startsOnFollowingLine;
+        foreach ($lines as $index => $rawLine) {
+            if (!$commentSeen && trim($rawLine) === '' && $index > 0) {
+                $blankSeenBeforeComment = true;
+            }
+
+            $commentPos = strpos($rawLine, '#');
+            $isCommentStart = $commentPos !== false
+                && ($commentPos === 0 || in_array($rawLine[$commentPos - 1], [' ', "\t"], true));
+
+            if ($isCommentStart) {
+                if ($strictCommentContext && $inlineStart && !$blankSeenBeforeComment) {
+                    $commentSeen = true;
+                }
+                continue;
+            }
+
+            if ($commentSeen && trim($rawLine) !== '') {
+                throw new LexerException(sprintf('Invalid comment placement in plain scalar at line %d, column %d', $context->getLine() + $index, 0));
+            }
+        }
+
         $processedLines = [];
         $includesLineBreak = false;
         foreach ($lines as $key => $line) {

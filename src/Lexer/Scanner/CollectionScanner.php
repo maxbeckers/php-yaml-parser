@@ -11,7 +11,7 @@ final class CollectionScanner extends AbstractScanner
 {
     public static function scan(LexerContext $context, string $currentChar): bool
     {
-        if ($currentChar === '-' && in_array($context->getInputPart(1, 1), [' ', "\n", "\r"], true)) {
+        if ($currentChar === '-' && in_array($context->getInputPart(1, 1), [' ', "\t", "\n", "\r"], true)) {
             self::handleHyphen($context);
 
             return true;
@@ -92,7 +92,8 @@ final class CollectionScanner extends AbstractScanner
         $context->addToken(self::createToken($context, TokenType::SEQUENCE_INDICATOR, '-'));
         $indent = 1 + $context->getNumberOfCharsCount(' ', 1);
         $context->increasePositionInLine($indent);
-        if (!in_array($context->getInputPart(1, 1), ["\n", "\r"], true)) {
+        $nextChar = $context->getInputPart(1);
+        if (!in_array($nextChar, ["\n", "\r", '#', ''], true)) {
             $context->pushIndent($indent + $context->getCurrentIndent());
             $context->addToken(self::createToken($context, TokenType::INDENT));
         }
