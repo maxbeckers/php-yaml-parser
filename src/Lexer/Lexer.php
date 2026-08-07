@@ -48,6 +48,12 @@ final class Lexer
             throw new LexerException("No scanner could process the input at line {$context->getLine()}, column {$context->getColumn()} (char: '" . $currentChar . "')");
         }
 
+        if ($context->getCurrentIndent() === -1 && $context->hasPendingDirectives()) {
+            throw new LexerException(
+                "A %YAML/%TAG directive must be followed by a '---' document start marker before end of stream"
+            );
+        }
+
         if ($context->getCurrentIndent() > -1) {
             DocumentScanner::resetMode($context);
         }

@@ -114,6 +114,11 @@ final class LexerContext
         return $this->directiveTokensByDocument[$this->document + $offset];
     }
 
+    public function hasPendingDirectives(): bool
+    {
+        return !empty($this->directiveTokensByDocument[$this->document + 1] ?? []);
+    }
+
     public function setYamlVersion(Version $version): void
     {
         $this->yamlVersionByDocument[$this->document + 1] = $version;

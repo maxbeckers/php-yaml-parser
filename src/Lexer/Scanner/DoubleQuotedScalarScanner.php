@@ -57,6 +57,13 @@ final class DoubleQuotedScalarScanner extends AbstractScanner
             }
 
             if ($key > 0) {
+                if ($context->getMode() === ContextMode::BLOCK_KEY) {
+                    $trimmedLine = ltrim($line, " \t");
+                    if (preg_match('/^(---|\.\.\.)(?:[ \t]|$|#)/', $trimmedLine) === 1) {
+                        throw new LexerException(sprintf('Invalid document marker inside double-quoted scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
+                    }
+                }
+
                 if ($context->getMode() === ContextMode::BLOCK_VALUE && str_starts_with($line, "\t")) {
                     throw new LexerException(sprintf('Tab character found in block indentation at line %d, column %d', $context->getLine(), $context->getColumn()));
                 }

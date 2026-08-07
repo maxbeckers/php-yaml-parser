@@ -46,6 +46,13 @@ final class SingleQuotedScalarScanner extends AbstractScanner
             }
 
             if ($key > 0) {
+                if ($context->getMode() === ContextMode::BLOCK_KEY) {
+                    $trimmedLine = ltrim($line, " \t");
+                    if (preg_match('/^(---|\.\.\.)(?:[ \t]|$|#)/', $trimmedLine) === 1) {
+                        throw new LexerException(sprintf('Invalid document marker inside single-quoted scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
+                    }
+                }
+
                 $line = trim($line);
                 $context->increaseLine();
             }
