@@ -10,13 +10,13 @@ use PHPUnit\Framework\TestCase;
 class YamlTestSuiteTest extends TestCase
 {
     private const SKIPPED_TESTS = [
-        '236B', '26DV', '2AUY', '2EBW', '2XXW', '3HFZ', '57H4',
-        '5TRB', '62EZ', '6JWB', '6S55',
-        '9CWY', '9HCY', '9KAX', '9KBC', '9MMA', '9MQT-01', 'B63P', 'BD7L',
-        'EB22', 'F2C7',
+        '236B', '26DV', '2EBW', '3HFZ',
+        '5TRB', '62EZ', '6S55',
+        '9CWY', '9HCY', '9KBC', '9MMA', '9MQT-01', 'B63P', 'BD7L',
+        'EB22',
         'JY7Z',
-        'LHL4', 'MUS6-01', 'P2EQ',
-        'RHX7', 'RXY3', 'TD5N', 'U99R',
+        'MUS6-01', 'P2EQ',
+        'RHX7', 'RXY3', 'TD5N',
         'UT92',
         'ZL4Z',
     ];

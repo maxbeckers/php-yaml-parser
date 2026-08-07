@@ -29,11 +29,18 @@ final class SequenceParser implements TokenParserInterface
 
             $metadata = new NodeMetadata();
             MetadataParser::parseMetadata($metadata, $context);
+
+            $hasDeferredTaggedBlockNode = $metadata->getTag() !== null
+                && Parser::peek($context)->is(TokenType::DEDENT)
+                && Parser::peek($context, 1)->is(TokenType::INDENT)
+                && Parser::peek($context, 2)->isOneOf(TokenType::SEQUENCE_INDICATOR, TokenType::EXPLICIT_KEY);
+
             if (Parser::peek($context)->is(TokenType::DEDENT)
+                && !$hasDeferredTaggedBlockNode
                 || (Parser::peek($context)->is(TokenType::SEQUENCE_INDICATOR)
                     && Parser::peek($context)->line > $sequenceToken->line)
             ) {
-                $item = new ScalarNode(null);
+                $item = new ScalarNode(null, $metadata);
             } else {
                 $item = Parser::parseValue($context, $metadata);
             }

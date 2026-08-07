@@ -23,19 +23,42 @@ class TagScanner extends AbstractScanner
         $tag = $context->getInputPart($charsTillEoTag);
         $tagTypes = [TagType::VERBATIM, TagType::SHORTHAND, TagType::NAMED, TagType::NON_SPECIFIC];
 
+        if ($tag !== '!' && strpbrk($tag, '{}') !== false) {
+            throw new LexerException(
+                "Invalid tag format '{$tag}' in line {$context->getLine()}, column {$context->getColumn()}"
+            );
+        }
+
+        if ($tag !== '!' && !preg_match('/^!<[^>]*>$/', $tag) && str_contains($tag, ',')) {
+            throw new LexerException(
+                "Invalid tag format '{$tag}' in line {$context->getLine()}, column {$context->getColumn()}"
+            );
+        }
+
+        $isValidTag = false;
         foreach ($tagTypes as $tagType) {
             switch (true) {
                 case $tagType === TagType::VERBATIM && preg_match('/^!<[^>]+>$/', $tag):
                     self::validateVerbatimTag($context, $tag);
+                    $isValidTag = true;
                     break 2;
                 case $tagType === TagType::SHORTHAND && preg_match('/^!![a-zA-Z0-9]+$/', $tag):
                 case $tagType === TagType::NAMED && preg_match('/^![a-zA-Z0-9!%]+$/', $tag):
                     $tag = self::handleGlobalDirectives($context, $tag);
+                    $isValidTag = true;
                     break 2;
                 case $tagType === TagType::NON_SPECIFIC && $tag === '!':
+                    $isValidTag = true;
                     break 2;
             }
         }
+
+        if (!$isValidTag) {
+            throw new LexerException(
+                "Invalid tag format '{$tag}' in line {$context->getLine()}, column {$context->getColumn()}"
+            );
+        }
+
         $followingWhitespaces = $context->getNumberOfCharsCount(' ', $charsTillEoTag);
         $context->increasePosition($charsTillEoTag + $followingWhitespaces);
 

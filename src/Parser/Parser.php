@@ -102,6 +102,17 @@ final class Parser
             $metadataIndentWrapped = true;
         }
 
+        // Some tagged block nodes are lexed with a DEDENT/INDENT transition before the actual node token.
+        if (!$context->isFlowContext()
+            && $metadata->getTag() !== null
+            && self::peek($context)->is(TokenType::DEDENT)
+            && self::peek($context, 1)->is(TokenType::INDENT)
+            && self::peek($context, 2)->isOneOf(TokenType::SEQUENCE_INDICATOR, TokenType::EXPLICIT_KEY)
+        ) {
+            self::handleDedent($context);
+            self::handleIndent($context);
+        }
+
         if (($metadata->getTag() !== null || $metadata->getAnchor() !== null)
             && self::peek($context)->isOneOf(TokenType::EOF, TokenType::DOCUMENT_END, TokenType::FLOW_SEPARATOR, TokenType::MAPPING_END, TokenType::SEQUENCE_END, TokenType::DEDENT)
         ) {

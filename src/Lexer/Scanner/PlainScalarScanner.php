@@ -114,6 +114,7 @@ final class PlainScalarScanner extends AbstractScanner
                     } elseif ($actualCharLineAhead === '-'
                         && !$context->isInFlow()
                         && $context->getMode() === ContextMode::BLOCK_SEQUENCE_ENTRY
+                        && !$context->getLastToken()->isOneOf(TokenType::TAG, TokenType::ANCHOR)
                         && !$startedAfterKeyIndicator
                         && $context->getInputPart(1, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 1) === ' '
                         && $lineAheadIndent > 0
