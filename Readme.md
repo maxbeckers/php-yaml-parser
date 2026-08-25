@@ -88,7 +88,7 @@ Use at your own risk.
 But i make it publicly available in the hope that it might be useful to someone.
 
 ## Todos
-
+compo
 - [ ] Add configurable options for parsing behavior (e.g. strict mode) (Phase 2)
 - [ ] Improve metadata handling for mappings and sequences (Phase 3)
 

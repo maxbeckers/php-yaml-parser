@@ -28,6 +28,7 @@ final readonly class Resolver
         $this->collectAnchors($context, $ast);
 
         $context->resetForAliasHandling();
+
         return $this->resolveNode($context, $ast);
     }
 
@@ -42,6 +43,7 @@ final readonly class Resolver
             if ($handler) {
                 $value = $this->extractValue($node);
                 $processedValue = $handler->handle($value, $node->getMetadata());
+
                 return new ScalarNode($processedValue, $node->getMetadata());
             }
         }
@@ -300,7 +302,7 @@ final readonly class Resolver
         return match (true) {
             $node instanceof ScalarNode => $node->getValue(),
             $node instanceof SequenceNode => array_map(
-                fn($item) => $this->extractValue($item),
+                fn ($item) => $this->extractValue($item),
                 $node->getItems()
             ),
             $node instanceof MappingNode => $this->extractMappingValue($node),

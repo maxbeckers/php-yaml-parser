@@ -16,8 +16,7 @@ final class ArrayObjectConstructor implements ConstructorInterface
         array|NodeInterface $node,
         ConstructorContext $context = new ConstructorContext(),
         bool $preferPlainArrays = false
-    ): mixed
-    {
+    ): mixed {
         return self::constructInternal($node, $context, $preferPlainArrays);
     }
 
@@ -25,8 +24,7 @@ final class ArrayObjectConstructor implements ConstructorInterface
         array|NodeInterface $node,
         ConstructorContext $context,
         bool $preferPlainArrays
-    ): mixed
-    {
+    ): mixed {
         if (!$node instanceof NodeInterface) {
             return $node;
         }
@@ -64,8 +62,7 @@ final class ArrayObjectConstructor implements ConstructorInterface
         int $nodeId,
         ConstructorContext $context,
         bool $preferPlainArrays
-    ): \ArrayObject|array
-    {
+    ): \ArrayObject|array {
         if ($preferPlainArrays) {
             $result = [];
             $context->addReference($nodeId, $result);
@@ -103,8 +100,7 @@ final class ArrayObjectConstructor implements ConstructorInterface
         int $nodeId,
         ConstructorContext $context,
         bool $preferPlainArrays
-    ): \ArrayObject|array
-    {
+    ): \ArrayObject|array {
         if ($preferPlainArrays) {
             $result = [];
             $context->addReference($nodeId, $result);
@@ -142,8 +138,7 @@ final class ArrayObjectConstructor implements ConstructorInterface
         int $nodeId,
         ConstructorContext $context,
         bool $preferPlainArrays
-    ): \ArrayObject|array
-    {
+    ): \ArrayObject|array {
         if ($preferPlainArrays) {
             $result = [];
             $context->addReference($nodeId, $result);

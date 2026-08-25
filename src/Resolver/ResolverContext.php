@@ -28,6 +28,7 @@ final class ResolverContext
     private function createCacheKey(string $name): string
     {
         $occurrence = $this->currentAnchorOccurrence[$name]->getOccurrence() ?? 0;
+
         return $this->currentDocument . '::' . $name . '::' . $occurrence;
     }
 
@@ -45,6 +46,7 @@ final class ResolverContext
     {
         if ($implicit === true) {
             $this->currentAnchorOccurrence[$name] = new AnchorOccurrence(1, true);
+
             return;
         }
 
@@ -120,7 +122,3 @@ final class ResolverContext
         return $this->tagRegistry;
     }
 }
-
-
-
-

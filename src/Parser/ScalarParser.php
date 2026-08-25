@@ -36,6 +36,7 @@ final class ScalarParser implements TokenParserInterface
                 $tokenValue = null;
             }
             Parser::advance($context);
+
             return new ScalarNode($tokenValue, $metadata);
         }
 
