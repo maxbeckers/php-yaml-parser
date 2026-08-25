@@ -8,12 +8,20 @@ use MaxBeckers\YamlParser\Format\Version;
 
 final class CommentScanner extends AbstractScanner
 {
+    private static array $COMMENT_PRE_CHARS_12 = ['', ' ', "\n"];
+    private static array $COMMENT_PRE_CHARS_11 = ['', ' ', "\n", "\t"];
+
     public static function scan(LexerContext $context, string $currentChar): bool
     {
         if ($currentChar !== '#') {
             return false;
         }
-        if (!in_array($context->getInputPart(1, -1), self::commentPreChars($context), true)) {
+        $prevChar = $context->getInputPart(1, -1);
+        $allowedChars = $context->getYamlVersion() === Version::VERSION_1_1
+            ? self::$COMMENT_PRE_CHARS_11
+            : self::$COMMENT_PRE_CHARS_12;
+
+        if (!in_array($prevChar, $allowedChars, true)) {
             throw new LexerException(sprintf('Comment character \'#\' must be preceded by whitespace at line %d, column %d', $context->getLine(), $context->getColumn()));
         }
 
@@ -21,15 +29,5 @@ final class CommentScanner extends AbstractScanner
         $context->increasePosition($charsTillEol);
 
         return true;
-    }
-
-    private static function commentPreChars(LexerContext $context): array
-    {
-        $allowedChars = ['', ' ', "\n"];
-        if ($context->getYamlVersion() === Version::VERSION_1_1) {
-            $allowedChars[] = "\t";
-        }
-
-        return $allowedChars;
     }
 }

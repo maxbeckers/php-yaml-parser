@@ -1,20 +1,34 @@
 <?php
 
-namespace MaxBeckers\YamlParser\Resolver\Anchor;
+namespace MaxBeckers\YamlParser\Resolver;
 
 use MaxBeckers\YamlParser\Api\NodeInterface;
+use MaxBeckers\YamlParser\Resolver\Anchor\AnchorOccurrence;
+use MaxBeckers\YamlParser\Resolver\Tag\TagRegistry;
 
-final class AnchorResolverContext
+final class ResolverContext
 {
+    private array $anchors = [];
+
+    private array $resolved = [];
+
+    private array $resolving = [];
+
+    private array $resolving_nodes = [];
+
+    private array $currentAnchorOccurrence = [];
+
+    private int $currentDocument = 0;
+
     public function __construct(
-        private array $anchors = [],
-        private array $resolved = [],
-        private array $resolving = [],
-        private array $resolving_nodes = [],
-        private int $currentDocument = 0,
-        /** @var AnchorOccurrence */
-        private array $currentAnchorOccurrence = []
+        private readonly TagRegistry $tagRegistry
     ) {
+    }
+
+    private function createCacheKey(string $name): string
+    {
+        $occurrence = $this->currentAnchorOccurrence[$name]->getOccurrence() ?? 0;
+        return $this->currentDocument . '::' . $name . '::' . $occurrence;
     }
 
     public function addAnchor(string $name, NodeInterface &$value): void
@@ -31,25 +45,24 @@ final class AnchorResolverContext
     {
         if ($implicit === true) {
             $this->currentAnchorOccurrence[$name] = new AnchorOccurrence(1, true);
-
             return;
         }
 
         if (!isset($this->currentAnchorOccurrence[$name])) {
-            $this->currentAnchorOccurrence[$name] = new AnchorOccurrence();
+            $this->currentAnchorOccurrence[$name] = new \MaxBeckers\YamlParser\Resolver\Anchor\AnchorOccurrence();
         }
 
         $this->currentAnchorOccurrence[$name]->incrementOccurrence();
     }
 
-    public function &getAnchor(string $name): ?NodeInterface
-    {
-        return $this->anchors[$this->createCacheKey($name)];
-    }
-
     public function hasAnchor(string $name): bool
     {
         return isset($this->anchors[$this->createCacheKey($name)]);
+    }
+
+    public function &getAnchor(string $name): ?NodeInterface
+    {
+        return $this->anchors[$this->createCacheKey($name)];
     }
 
     public function addResolved(string $name, NodeInterface &$node): void
@@ -97,13 +110,17 @@ final class AnchorResolverContext
     public function resetForAliasHandling(): void
     {
         $this->currentDocument = 0;
-        foreach ($this->currentAnchorOccurrence as $name => $node) {
+        foreach ($this->currentAnchorOccurrence as $name => $occurrence) {
             $this->currentAnchorOccurrence[$name] = new AnchorOccurrence();
         }
     }
 
-    private function createCacheKey(string $name): string
+    public function getTagRegistry(): TagRegistry
     {
-        return $this->currentDocument . '::' . $name . '::' . ($this->currentAnchorOccurrence[$name]->getOccurrence() ?? 0);
+        return $this->tagRegistry;
     }
 }
+
+
+
+

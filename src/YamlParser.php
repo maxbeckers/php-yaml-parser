@@ -7,8 +7,7 @@ use MaxBeckers\YamlParser\Lexer\LexerContext;
 use MaxBeckers\YamlParser\Lexer\TokenStream;
 use MaxBeckers\YamlParser\Parser\Parser;
 use MaxBeckers\YamlParser\Parser\ParserContext;
-use MaxBeckers\YamlParser\Resolver\Anchor\AnchorResolver;
-use MaxBeckers\YamlParser\Resolver\Merge\MergeResolver;
+use MaxBeckers\YamlParser\Resolver\Resolver;
 use MaxBeckers\YamlParser\Resolver\Tag\Basic\BinaryTagHandler;
 use MaxBeckers\YamlParser\Resolver\Tag\Basic\BoolTagHandler;
 use MaxBeckers\YamlParser\Resolver\Tag\Basic\FloatTagHandler;
@@ -18,18 +17,20 @@ use MaxBeckers\YamlParser\Resolver\Tag\Basic\StringTagHandler;
 use MaxBeckers\YamlParser\Resolver\Tag\Basic\TimestampTagHandler;
 use MaxBeckers\YamlParser\Constructor\ArrayObjectConstructor;
 use MaxBeckers\YamlParser\Resolver\Tag\TagRegistry;
-use MaxBeckers\YamlParser\Resolver\Tag\TagResolver;
 
 final class YamlParser
 {
-    private TagResolver $tagResolver;
+    private Resolver $resolver;
     private TagRegistry $tagRegistry;
+    private bool $preferPlainArrays;
 
     public function __construct(
         ?TagRegistry $tagRegistry = null,
+        bool $preferPlainArrays = false,
     ) {
         $this->tagRegistry = $tagRegistry ?? new TagRegistry();
-        $this->tagResolver = new TagResolver($this->tagRegistry);
+        $this->resolver = new Resolver($this->tagRegistry);
+        $this->preferPlainArrays = $preferPlainArrays;
 
         $this->tagRegistry->register(new BinaryTagHandler());
         $this->tagRegistry->register(new BoolTagHandler());
@@ -42,14 +43,22 @@ final class YamlParser
 
     public function parse(string $yaml, bool $stripWrapperOnSingleItem = true): mixed
     {
+        return $this->parseWithArrayPreference($yaml, $stripWrapperOnSingleItem, $this->preferPlainArrays);
+    }
+
+    public function parsePlainArray(string $yaml, bool $stripWrapperOnSingleItem = true): mixed
+    {
+        return $this->parseWithArrayPreference($yaml, $stripWrapperOnSingleItem, true);
+    }
+
+    private function parseWithArrayPreference(string $yaml, bool $stripWrapperOnSingleItem, bool $preferPlainArrays): mixed
+    {
         $tokens = Lexer::tokenize(new LexerContext($yaml));
         $ast = Parser::parse(new ParserContext(new TokenStream($tokens)));
-        $ast = $this->tagResolver->process($ast);
-        $ast = AnchorResolver::resolve($ast);
-        $ast = MergeResolver::resolve($ast);
+        $ast = $this->resolver->resolve($ast);
         $constructor = new ArrayObjectConstructor();
 
-        $serialized = $constructor->construct($ast);
+        $serialized = $constructor->construct($ast, preferPlainArrays: $preferPlainArrays);
         if ($stripWrapperOnSingleItem && ($serialized instanceof \ArrayObject || is_array($serialized)) && count($serialized) === 1) {
             return $serialized[0];
         }
@@ -59,17 +68,29 @@ final class YamlParser
 
     public function parseFile(string $filename, bool $stripWrapperOnSingleItem = false): mixed
     {
-        if (!file_exists($filename)) {
-            throw new \InvalidArgumentException("File not found: {$filename}");
-        }
-
-        $yaml = file_get_contents($filename);
+        $yaml = $this->getFileContents($filename);
 
         return $this->parse($yaml, $stripWrapperOnSingleItem);
     }
 
-    public function getTagRegistry(): TagRegistry
+    public function parseFilePlainArray(string $filename, bool $stripWrapperOnSingleItem = false): mixed
     {
-        return $this->tagRegistry;
+        $yaml = $this->getFileContents($filename);
+
+        return $this->parsePlainArray($yaml, $stripWrapperOnSingleItem);
+    }
+
+    private function getFileContents(string $filename): string
+    {
+        if (!file_exists($filename)) {
+            throw new \InvalidArgumentException("File not found: {$filename}");
+        }
+
+        $contents = file_get_contents($filename);
+        if ($contents === false) {
+            throw new \RuntimeException("Unable to read file: {$filename}");
+        }
+
+        return $contents;
     }
 }

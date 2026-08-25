@@ -21,7 +21,11 @@ final class LexerContext
     private array $modeStack = [ContextMode::STREAM_START];
     /** @var int[] */
     private array $indentStack = [-1];
-    private array $flowDepthStack = [0];
+
+    private ContextMode $cachedMode = ContextMode::STREAM_START;
+    private int $cachedIndent = -1;
+    private int $flowDepth = 0;
+    private ?TokenInterface $cachedLastToken = null;
 
     public function __construct(
         private readonly string $input,
@@ -29,19 +33,18 @@ final class LexerContext
         $this->inputLength = strlen($input);
     }
 
-    public function getInputLength(): int
-    {
-        return $this->inputLength;
-    }
-
     public function getInputPart(int $length, int $offset = 0): string
     {
-        if ($this->getPosition() + $offset >= 0) {
-            return substr($this->input, $this->getPosition() + $offset, $length);
+        if ($this->position + $offset >= 0) {
+            return substr($this->input, $this->position + $offset, $length);
         }
 
         return '';
+    }
 
+    public function getCurrentChar(): string
+    {
+        return $this->position < $this->inputLength ? $this->input[$this->position] : '';
     }
 
     public function getPosition(): int
@@ -88,12 +91,13 @@ final class LexerContext
 
     public function getLastToken(): TokenInterface
     {
-        return end($this->tokens);
+        return $this->cachedLastToken; // @phpstan-ignore-line
     }
 
     public function addToken(TokenInterface $token): void
     {
         $this->tokens[] = $token;
+        $this->cachedLastToken = $token;
     }
 
     public function addDirectiveToken(TokenInterface $token): void
@@ -131,17 +135,17 @@ final class LexerContext
 
     public function isAtEndOfFile(int $offset = 0): bool
     {
-        return $this->getPosition() + $offset >= $this->getInputLength();
+        return $this->position + $offset >= $this->inputLength;
     }
 
     public function getNumberOfCharsTill(string $till, int $skip = 0): int
     {
-        return strcspn($this->input, $till, $this->getPosition() + $skip);
+        return strcspn($this->input, $till, $this->position + $skip);
     }
 
     public function getNumberOfCharsCount(string $including, int $skip = 0): int
     {
-        return strspn($this->input, $including, $this->getPosition() + $skip);
+        return strspn($this->input, $including, $this->position + $skip);
     }
 
     public function startNewDocument(): void
@@ -151,18 +155,22 @@ final class LexerContext
 
     public function getMode(): ContextMode
     {
-        return end($this->modeStack);
+        return $this->cachedMode;
     }
 
     public function pushMode(ContextMode $mode): void
     {
         $this->modeStack[] = $mode;
+        $this->cachedMode = $mode;
     }
 
     public function popMode(): ContextMode
     {
         if (count($this->modeStack) > 1) {
-            return array_pop($this->modeStack);
+            $popped = array_pop($this->modeStack);
+            $this->cachedMode = end($this->modeStack);
+
+            return $popped;
         }
 
         return $this->modeStack[0];
@@ -170,20 +178,24 @@ final class LexerContext
 
     public function getCurrentIndent(): int
     {
-        return end($this->indentStack);
+        return $this->cachedIndent;
     }
 
     public function pushIndent(int $indent): void
     {
         if (end($this->indentStack) !== $indent) {
             $this->indentStack[] = $indent;
+            $this->cachedIndent = $indent;
         }
     }
 
     public function popIndent(): int
     {
         if (count($this->indentStack) > 1) {
-            return array_pop($this->indentStack);
+            $popped = array_pop($this->indentStack);
+            $this->cachedIndent = end($this->indentStack);
+
+            return $popped;
         }
 
         return -1;
@@ -191,19 +203,18 @@ final class LexerContext
 
     public function isInFlow(): bool
     {
-        return end($this->flowDepthStack) > 0;
+        return $this->flowDepth > 0;
     }
 
     public function enterFlow(): void
     {
-        $current = end($this->flowDepthStack);
-        $this->flowDepthStack[] = $current + 1;
+        $this->flowDepth++;
     }
 
     public function exitFlow(): void
     {
-        if (count($this->flowDepthStack) > 1) {
-            array_pop($this->flowDepthStack);
+        if ($this->flowDepth > 0) {
+            $this->flowDepth--;
         }
     }
 }

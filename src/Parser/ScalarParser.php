@@ -15,6 +15,8 @@ use MaxBeckers\YamlParser\Format\Version;
 
 final class ScalarParser implements TokenParserInterface
 {
+    private static array $NUMBER_TYPE_PATTERNS = [];
+
     public static function supports(ParserContext $context): bool
     {
         return Parser::peek($context)->isScalar();
@@ -26,17 +28,24 @@ final class ScalarParser implements TokenParserInterface
             return self::parseKey($context, $metadata);
         }
 
-        $value = Parser::peek($context)->value;
+        $token = Parser::peek($context);
+
+        if ($token->type !== TokenType::PLAIN_SCALAR) {
+            $tokenValue = $token->value;
+            if ($tokenValue === '' && $context->getYamlVersion() === Version::VERSION_1_1) {
+                $tokenValue = null;
+            }
+            Parser::advance($context);
+            return new ScalarNode($tokenValue, $metadata);
+        }
+
+        $value = $token->value;
 
         if (self::isNullValue($context, $value)) {
             $value = null;
         } elseif (self::isBooleanValue($context, $value)) {
             $lowerValue = strtolower($value);
-            if (in_array($lowerValue, ['true', 'yes', 'on'], true)) {
-                $value = true;
-            } else {
-                $value = false;
-            }
+            $value = ($lowerValue === 'true' || $lowerValue === 'yes' || $lowerValue === 'on');
         } else {
             $numberType = self::getNumberType($context, $value);
             if ($numberType !== null) {
@@ -120,26 +129,44 @@ final class ScalarParser implements TokenParserInterface
         $lowerValue = strtolower($value);
 
         if ($context->getYamlVersion() === Version::VERSION_1_1) {
-            return in_array($lowerValue, ['true', 'false', 'yes', 'no', 'on', 'off'], true);
+            return $lowerValue === 'true' || $lowerValue === 'false'
+                || $lowerValue === 'yes'  || $lowerValue === 'no'
+                || $lowerValue === 'on'   || $lowerValue === 'off';
         }
 
-        return in_array($lowerValue, ['true', 'false'], true);
+        return $lowerValue === 'true' || $lowerValue === 'false';
     }
 
     private static function getNumberType(ParserContext $context, string $value): ?NumberType
     {
-        $numberTypes = [
-            '^[+-]?\d+$' => NumberType::INTEGER,
-            '^([+-]?(\d+\.\d*|\.\d+)([eE][+-]?\d+)?|[+-]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$' => NumberType::FLOAT,
-            '^0x[0-9a-fA-F]+$' => NumberType::HEXADECIMAL,
-        ];
-        if ($context->getYamlVersion() === Version::VERSION_1_1) {
-            $numberTypes['^0[0-7]+$'] = NumberType::OCTAL;
-        } else {
-            $numberTypes['^0o[0-7]+$'] = NumberType::OCTAL;
+        $first = $value[0] ?? '';
+        if ($first !== '+' && $first !== '-' && $first !== '.'
+            && ($first < '0' || $first > '9')
+        ) {
+            return null;
         }
 
-        foreach ($numberTypes as $pattern => $numberType) {
+        $version = $context->getYamlVersion()->value;
+
+        if (!isset(self::$NUMBER_TYPE_PATTERNS[$version])) {
+            if ($context->getYamlVersion() === Version::VERSION_1_1) {
+                self::$NUMBER_TYPE_PATTERNS[$version] = [
+                    '^[+-]?\d+$' => NumberType::INTEGER,
+                    '^([+-]?(\d+\.\d*|\.\d+)([eE][+-]?\d+)?|[+-]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$' => NumberType::FLOAT,
+                    '^0x[0-9a-fA-F]+$' => NumberType::HEXADECIMAL,
+                    '^0[0-7]+$' => NumberType::OCTAL,
+                ];
+            } else {
+                self::$NUMBER_TYPE_PATTERNS[$version] = [
+                    '^[+-]?\d+$' => NumberType::INTEGER,
+                    '^([+-]?(\d+\.\d*|\.\d+)([eE][+-]?\d+)?|[+-]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$' => NumberType::FLOAT,
+                    '^0x[0-9a-fA-F]+$' => NumberType::HEXADECIMAL,
+                    '^0o[0-7]+$' => NumberType::OCTAL,
+                ];
+            }
+        }
+
+        foreach (self::$NUMBER_TYPE_PATTERNS[$version] as $pattern => $numberType) {
             if (FormatHelper::matchPattern($pattern, $value)) {
                 return $numberType;
             }

@@ -6,37 +6,58 @@ class ConstructorContext
 {
     public function __construct(
         public array $references = [],
-        public array $converted = []
+        public array $inProgress = [],
+        public array $inProgressStack = [],
+        public array $inProgressPositions = []
     ) {
     }
 
-    public function addReference(string $id, object &$value): void
+    public function addReference(int $id, mixed &$value): void
     {
         $this->references[$id] = &$value;
     }
 
-    public function hasReference(string $id): bool
+    public function hasReference(int $id): bool
     {
         return isset($this->references[$id]);
     }
 
-    public function &getReference(string $id): object
+    public function &getReference(int $id): mixed
     {
         return $this->references[$id];
     }
 
-    public function addConverted(string $id, object &$value): void
+    public function removeReference(int $id): void
     {
-        $this->converted[$id] = &$value;
+        unset($this->references[$id]);
     }
 
-    public function hasConverted(string $id): bool
+    public function markInProgress(int $id): void
     {
-        return isset($this->converted[$id]);
+        $this->inProgress[$id] = true;
+        $this->inProgressPositions[$id] = count($this->inProgressStack);
+        $this->inProgressStack[] = $id;
     }
 
-    public function &getConverted(string $id): object
+    public function unmarkInProgress(int $id): void
     {
-        return $this->converted[$id];
+        unset($this->inProgress[$id]);
+        unset($this->inProgressPositions[$id]);
+        array_pop($this->inProgressStack);
+    }
+
+    public function isInProgress(int $id): bool
+    {
+        return isset($this->inProgress[$id]);
+    }
+
+    /**
+     * @return array<int>
+     */
+    public function getCycleNodeIds(int $id): array
+    {
+        $startIndex = $this->inProgressPositions[$id] ?? 0;
+
+        return array_slice($this->inProgressStack, $startIndex);
     }
 }

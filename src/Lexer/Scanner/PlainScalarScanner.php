@@ -50,6 +50,10 @@ final class PlainScalarScanner extends AbstractScanner
 
         $startedAfterKeyIndicator = $context->getLastToken()->is(TokenType::KEY_INDICATOR);
 
+        $mode          = $context->getMode();
+        $inFlow        = $context->isInFlow();
+        $currentIndent = $context->getCurrentIndent();
+
         $charsToPossibleEnd = 0;
         $isMultilineInput = false;
         do {
@@ -58,7 +62,6 @@ final class PlainScalarScanner extends AbstractScanner
             $currentLineLength = $charsToPossibleEnd - $lastLineEnd;
             $actualChar = $context->getInputPart(1, $charsToPossibleEnd);
             if ($actualChar === "\n" || $actualChar === "\r") {
-                $isMultilineInput = true;
                 do {
                     $lookAheadLine = 1;
                     if ($actualChar === "\r" && $context->getInputPart(1, $charsToPossibleEnd + 1) === "\n") {
@@ -68,26 +71,26 @@ final class PlainScalarScanner extends AbstractScanner
                     $lineAheadIndent = $context->getNumberOfCharsCount(" \t", $lineAheadOffset);
                     $lineAheadFirstChar = $context->getInputPart(1, $lineAheadOffset + $lineAheadIndent);
 
-                    if (!$context->isInFlow()) {
-                        if ($context->getMode() === ContextMode::BLOCK_VALUE
+                    if (!$inFlow) {
+                        if ($mode === ContextMode::BLOCK_VALUE
                             && $lineAheadFirstChar !== "\n"
                             && $lineAheadFirstChar !== "\r"
                             && $lineAheadFirstChar !== ''
                             && $lineAheadFirstChar !== '#'
-                            && $lineAheadIndent <= $context->getCurrentIndent()
+                            && $lineAheadIndent <= $currentIndent
                         ) {
                             break 2;
                         }
 
-                        if ($context->getMode() === ContextMode::BLOCK_SEQUENCE_ENTRY
+                        if ($mode === ContextMode::BLOCK_SEQUENCE_ENTRY
                             && in_array($lineAheadFirstChar, ['&', '!'], true)
-                            && $lineAheadIndent <= $context->getCurrentIndent()
+                            && $lineAheadIndent <= $currentIndent
                         ) {
                             break 2;
                         }
 
-                        if ($context->getMode() === ContextMode::BLOCK_SEQUENCE_ENTRY
-                            && $lineAheadIndent < $context->getCurrentIndent()
+                        if ($mode === ContextMode::BLOCK_SEQUENCE_ENTRY
+                            && $lineAheadIndent < $currentIndent
                             && in_array($context->getInputPart(1, $charsToPossibleEnd), ["\n", "\r"], true)
                             && !in_array($lineAheadFirstChar, ['', "\n", "\r", '#', '-'], true)
                         ) {
@@ -106,27 +109,27 @@ final class PlainScalarScanner extends AbstractScanner
                     if ($actualCharLineAhead === "\n" || $actualCharLineAhead === "\r") {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                         $actualChar = $actualCharLineAhead;
-                    } elseif ($actualCharLineAhead === '.' && !$context->isInFlow() && $context->getInputPart(2, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 1) === '..') {
+                    } elseif ($actualCharLineAhead === '.' && !$inFlow && $context->getInputPart(2, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 1) === '..') {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                         break 2;
-                    } elseif ($actualCharLineAhead === ',' && $context->isInFlow()) {
+                    } elseif ($actualCharLineAhead === ',' && $inFlow) {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                         break 2;
-                    } elseif ($actualCharLineAhead === ',' && !$context->isInFlow()) {
+                    } elseif ($actualCharLineAhead === ',' && !$inFlow) {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                     } elseif ($actualCharLineAhead === '.') {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead + 1;
-                    } elseif ($actualCharLineAhead === ':' && $context->isInFlow() && $context->getMode() === ContextMode::FLOW_MAPPING_KEY) {
+                    } elseif ($actualCharLineAhead === ':' && $inFlow && $mode === ContextMode::FLOW_MAPPING_KEY) {
                         $charsToPossibleEnd += $lookAheadLine + $charsToPossibleEndLineAhead;
                         break 2;
                     } elseif ($actualCharLineAhead === '-'
-                        && !$context->isInFlow()
-                        && $context->getMode() === ContextMode::BLOCK_SEQUENCE_ENTRY
+                        && !$inFlow
+                        && $mode === ContextMode::BLOCK_SEQUENCE_ENTRY
                         && !$context->getLastToken()->isOneOf(TokenType::TAG, TokenType::ANCHOR)
                         && !$startedAfterKeyIndicator
                         && $context->getInputPart(1, $charsToPossibleEnd + $lookAheadLine + $charsToPossibleEndLineAhead + 1) === ' '
                         && $lineAheadIndent > 0
-                        && ($lineAheadIndent + 1) === $context->getCurrentIndent()
+                        && ($lineAheadIndent + 1) === $currentIndent
                         && !in_array(
                             $context->getInputPart(
                                 1,
@@ -154,7 +157,7 @@ final class PlainScalarScanner extends AbstractScanner
                     }
                 } while (true);
             } elseif ($actualChar === ',') {
-                if ($context->isInFlow()) {
+                if ($inFlow) {
                     break;
                 }
                 $charsToPossibleEnd++;
@@ -170,13 +173,13 @@ final class PlainScalarScanner extends AbstractScanner
             } elseif ($actualChar === ':') {
                 $nextChar = $context->getInputPart(1, $charsToPossibleEnd + 1);
                 if (in_array($nextChar, [' ', "\t", "\n", "\r"], true)) {
-                    if (!$context->isInFlow() && $context->getMode() === ContextMode::BLOCK_VALUE && $charsToPossibleEnd > 0 && $isMultilineInput) {
+                    if (!$inFlow && $mode === ContextMode::BLOCK_VALUE && $charsToPossibleEnd > 0 && $isMultilineInput) {
                         throw new LexerException(sprintf('Invalid mapping indicator in plain scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
                     }
                     break;
-                } elseif (!$context->isInFlow() && $context->getMode() === ContextMode::BLOCK_VALUE && $nextChar === '#' && $charsToPossibleEnd > 0 && $isMultilineInput) {
+                } elseif (!$inFlow && $mode === ContextMode::BLOCK_VALUE && $nextChar === '#' && $charsToPossibleEnd > 0 && $isMultilineInput) {
                     throw new LexerException(sprintf('Invalid mapping indicator in plain scalar at line %d, column %d', $context->getLine(), $context->getColumn()));
-                } elseif ($context->isInFlow() && $nextChar === ',') {
+                } elseif ($inFlow && $nextChar === ',') {
                     break;
                 }
                 $charsToPossibleEnd++;
@@ -192,12 +195,12 @@ final class PlainScalarScanner extends AbstractScanner
                     $charsToPossibleEnd++;
                 }
             } elseif ($actualChar === '{' || $actualChar === '[') {
-                if ($charsToPossibleEnd === 0 || $context->isInFlow()) {
+                if ($charsToPossibleEnd === 0 || $inFlow) {
                     break;
                 }
                 $charsToPossibleEnd++;
             } elseif ($actualChar === '}' || $actualChar === ']') {
-                if ($context->isInFlow()) {
+                if ($inFlow) {
                     break;
                 }
                 $charsToPossibleEnd++;
@@ -211,6 +214,33 @@ final class PlainScalarScanner extends AbstractScanner
         }
 
         $scalar = $context->getInputPart($charsToPossibleEnd);
+
+        if (!str_contains($scalar, "\n") && !str_contains($scalar, "\r")) {
+            $context->setColumn(strlen($scalar));
+
+            $commentPos = strcspn($scalar, '#');
+            if ($commentPos < strlen($scalar) && ($commentPos === 0 || $scalar[$commentPos - 1] === ' ')) {
+                $scalar = substr($scalar, 0, $commentPos);
+            }
+            $finalScalar = trim($scalar);
+
+            if ($finalScalar === '' && $mode === ContextMode::BLOCK_KEY && !$inFlow && $currentIndent === 0) {
+                $context->increasePositionInLine($charsToPossibleEnd + $context->getNumberOfCharsCount(' ', $charsToPossibleEnd));
+
+                return true;
+            }
+
+            if ('' === $finalScalar && $context->getLastToken()->isScalar()) {
+                $context->increasePositionInLine($charsToPossibleEnd + $context->getNumberOfCharsCount(' ', $charsToPossibleEnd));
+
+                return true;
+            }
+
+            $context->addToken(self::createToken($context, TokenType::PLAIN_SCALAR, $finalScalar, [Token::METADATA_WAS_MULTILINE_INPUT => false]));
+            $context->increasePositionInLine($charsToPossibleEnd + $context->getNumberOfCharsCount(' ', $charsToPossibleEnd));
+
+            return true;
+        }
 
         $lines = preg_split('/\r\n|\r|\n/', $scalar);
 
@@ -278,7 +308,7 @@ final class PlainScalarScanner extends AbstractScanner
             $finalScalar = str_replace([" \n ", "\n ", " \n"], "\n", $finalScalar);
         }
 
-        if (trim($finalScalar) === '' && $context->getMode() === ContextMode::BLOCK_KEY && !$context->isInFlow() && $context->getCurrentIndent() === 0) {
+        if (trim($finalScalar) === '' && $mode === ContextMode::BLOCK_KEY && !$inFlow && $currentIndent === 0) {
             $context->increasePositionInLine($charsToPossibleEnd + $context->getNumberOfCharsCount(' ', $charsToPossibleEnd));
 
             return true;

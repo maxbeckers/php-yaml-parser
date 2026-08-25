@@ -38,7 +38,18 @@ final class Lexer
     public static function tokenize(LexerContext $context): array
     {
         while (!$context->isAtEndOfFile()) {
-            $currentChar = $context->getInputPart(1);
+            $currentChar = $context->getCurrentChar();
+
+            if (($currentChar >= 'a' && $currentChar <= 'z')
+                || ($currentChar >= 'A' && $currentChar <= 'Z')
+                || ($currentChar >= '0' && $currentChar <= '9')
+                || $currentChar === '_'
+                || $currentChar > "\x7f"
+            ) {
+                PlainScalarScanner::scan($context, $currentChar);
+                continue;
+            }
+
             foreach (self::$SCANNERS as $scannerClass) {
                 if ($scannerClass::scan($context, $currentChar)) {
                     continue 2;

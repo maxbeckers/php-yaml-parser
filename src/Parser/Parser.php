@@ -24,6 +24,8 @@ final class Parser
         ScalarParser::class,
     ];
 
+    private static ?Token $EOF_TOKEN = null;
+
     public static function parse(ParserContext $context): NodeInterface
     {
         $yamlNode = new YamlNode();
@@ -64,6 +66,15 @@ final class Parser
         $previousToken = self::peek($context, -1);
         $metadataToken = MetadataParser::parseMetadata($metadata, $context);
 
+        if ($metadataToken === null) {
+            $fastToken = self::peek($context);
+            if ($fastToken->isScalar()
+                && !self::peek($context, 1)->is(TokenType::KEY_INDICATOR)
+            ) {
+                return ScalarParser::parse($context, $metadata, $isKey);
+            }
+        }
+
         if (!$isKey
             && !$context->isFlowContext()
             && $previousToken->is(TokenType::KEY_INDICATOR)
@@ -102,7 +113,6 @@ final class Parser
             $metadataIndentWrapped = true;
         }
 
-        // Some tagged block nodes are lexed with a DEDENT/INDENT transition before the actual node token.
         if (!$context->isFlowContext()
             && $metadata->getTag() !== null
             && self::peek($context)->is(TokenType::DEDENT)
@@ -169,12 +179,12 @@ final class Parser
 
     public static function peek(ParserContext $context, int $peek = 0): Token
     {
-        return $context->getStream()->peek($peek) ?? new Token(TokenType::EOF);
+        return $context->getStream()->peek($peek) ?? (self::$EOF_TOKEN ??= new Token(TokenType::EOF));
     }
 
     public static function advance(ParserContext $context): Token
     {
-        return $context->getStream()->next() ?? new Token(TokenType::EOF);
+        return $context->getStream()->next() ?? (self::$EOF_TOKEN ??= new Token(TokenType::EOF));
     }
 
     public static function isAtEnd(ParserContext $context): bool

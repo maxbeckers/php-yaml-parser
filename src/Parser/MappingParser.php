@@ -29,7 +29,10 @@ final class MappingParser implements TokenParserInterface
 
         $startIndentLevel = $context->getIndentationLevel();
         while (!Parser::isAtEnd($context)) {
-            if (Parser::peek($context)->is(TokenType::DEDENT)) {
+            $currentToken = Parser::peek($context);
+            $currentType  = $currentToken->type;
+
+            if ($currentType === TokenType::DEDENT) {
                 if ($context->getIndentationLevel() === $startIndentLevel) {
                     break;
                 }
@@ -39,16 +42,21 @@ final class MappingParser implements TokenParserInterface
                 }
                 continue;
             }
-            if (Parser::peek($context)->is(TokenType::INDENT)) {
+            if ($currentType === TokenType::INDENT) {
                 Parser::handleIndent($context);
                 continue;
             }
 
-            if (in_array(Parser::peek($context)->type, [TokenType::EOF, TokenType::DOCUMENT_END, TokenType::DOCUMENT_START, TokenType::FLOW_SEPARATOR, TokenType::SEQUENCE_END], true)) {
+            if ($currentType === TokenType::EOF
+                || $currentType === TokenType::DOCUMENT_END
+                || $currentType === TokenType::DOCUMENT_START
+                || $currentType === TokenType::FLOW_SEPARATOR
+                || $currentType === TokenType::SEQUENCE_END
+            ) {
                 break;
             }
 
-            if (Parser::peek($context)->is(TokenType::EXPLICIT_KEY)) {
+            if ($currentType === TokenType::EXPLICIT_KEY) {
                 ExplicitKeyParser::parse($context, $mapping);
                 continue;
             }
@@ -147,12 +155,11 @@ final class MappingParser implements TokenParserInterface
                     && $valueStartToken->is(TokenType::PLAIN_SCALAR)
                     && Parser::peek($context)->is(TokenType::INDENT)
                 ) {
-                    if ($startIndentLevel > 0
+                    if (!(
+                        $startIndentLevel > 0
                         && Parser::peek($context, 1)->isScalar()
                         && Parser::peek($context, 2)->is(TokenType::KEY_INDICATOR)
-                    ) {
-                        // Allow compact mapping in sequence entries to continue with another mapping key.
-                    } else {
+                    )) {
                         throw new ParserException(
                             'Unexpected indented content after scalar value in block mapping',
                             Parser::peek($context)

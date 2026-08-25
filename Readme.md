@@ -26,6 +26,18 @@ $yamlParser = new YamlParser();
 $data = $yamlParser->parseFile('config.yaml');
 ```
 
+### Plain Array Output (Hybrid)
+
+```php
+use MaxBeckers\YamlParser\YamlParser;
+
+$yamlParser = new YamlParser();
+
+// Prefer plain arrays for normal structures.
+// Circular reference paths are promoted to ArrayObject automatically.
+$data = $yamlParser->parsePlainArray($yamlContent);
+```
+
 ### Custom Tag Handlers
 
 ```php
@@ -77,9 +89,8 @@ But i make it publicly available in the hope that it might be useful to someone.
 
 ## Todos
 
-- [ ] Performance optimizations for large YAML files
-- [ ] Add configurable options for parsing behavior (e.g. strict mode, return plain arrays instead of ArrayObject)
-- [ ] Improve metadata handling for mappings and sequences
+- [ ] Add configurable options for parsing behavior (e.g. strict mode) (Phase 2)
+- [ ] Improve metadata handling for mappings and sequences (Phase 3)
 
 ## Contributing
 
