@@ -17,8 +17,42 @@ abstract class AbstractScanner
         }
     }
 
-    protected static function createToken(LexerContext $context, TokenType $type, mixed $value = null, $metadata = []): Token
-    {
-        return new Token($type, $value, $context->getLine(), $context->getColumn(), $metadata);
+    protected static function createToken(
+        LexerContext $context,
+        TokenType $type,
+        mixed $value = null,
+        array $metadata = [],
+        ?int $line = null,
+        ?int $column = null
+    ): Token {
+        return new Token(
+            $type,
+            $value,
+            $line ?? $context->getLine(),
+            $column ?? $context->getColumn(),
+            $metadata
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected static function createScalarTokenMetadata(
+        LexerContext $context,
+        bool $wasMultilineInput,
+        int $startLine,
+        int $startColumn
+    ): array {
+        $metadata = [];
+        if ($wasMultilineInput) {
+            $metadata[Token::METADATA_WAS_MULTILINE_INPUT] = true;
+        }
+
+        if ($context->shouldTrackTokenStartPositions()) {
+            $metadata[Token::METADATA_START_LINE] = $startLine;
+            $metadata[Token::METADATA_START_COLUMN] = $startColumn;
+        }
+
+        return $metadata;
     }
 }

@@ -65,12 +65,22 @@ final class MappingParser implements TokenParserInterface
                 $key = $explicitKey;
                 $explicitKey = null;
                 $keyLine = 0;
+                $keyWasImplicitNull = false;
             } else {
                 $metadata = new NodeMetadata();
-                MetadataParser::parseMetadata($metadata, $context);
+                [$metadata, $metadataToken] = MetadataParser::parseMetadata($metadata, $context);
+                if ($context->shouldPreserveMetadata()) {
+                    $positionToken = $metadataToken ?? Parser::peek($context);
+                    $metadata = $metadata->withPosition(
+                        Parser::tokenLine($positionToken),
+                        Parser::tokenColumn($positionToken)
+                    );
+                }
                 $keyLine = Parser::peek($context)->line;
+                $keyWasImplicitNull = false;
                 if (Parser::peek($context)->is(TokenType::KEY_INDICATOR)) {
                     $key = new ScalarNode(null, $metadata);
+                    $keyWasImplicitNull = true;
                 } elseif (Parser::peek($context)->isScalar()) {
                     $key = ScalarParser::parse($context, $metadata, true);
                 } else {
@@ -108,7 +118,26 @@ final class MappingParser implements TokenParserInterface
                 && Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR)
                 && Parser::peek($context)->line === $keyIndicatorToken->line
                 && Parser::peek($context, 1)->line === $keyIndicatorToken->line
+                && $context->isStrictMode()
             ) {
+                $hasValueAfterSecondIndicator = !Parser::peek($context, 2)->isOneOf(
+                    TokenType::DEDENT,
+                    TokenType::SEQUENCE_END,
+                    TokenType::MAPPING_END,
+                    TokenType::DOCUMENT_END,
+                    TokenType::DOCUMENT_START,
+                    TokenType::FLOW_SEPARATOR,
+                    TokenType::EOF,
+                );
+                if ($keyWasImplicitNull && $hasValueAfterSecondIndicator) {
+                    $value = Parser::parseValue($context);
+                    if (Parser::peek($context)->is(TokenType::DEDENT)) {
+                        Parser::handleDedent($context);
+                    }
+                    $mapping->addPair($key, $value);
+                    continue;
+                }
+
                 throw new ParserException(
                     'Unexpected mapping key in scalar value in block mapping',
                     Parser::peek($context, 1)
@@ -119,6 +148,7 @@ final class MappingParser implements TokenParserInterface
                     && Parser::peek($context, 1)->is(TokenType::SEQUENCE_INDICATOR)
                     && Parser::peek($context, 1)->line > Parser::peek($context)->line
                     && Parser::peek($context)->column === 0
+                    && $context->isStrictMode()
                 ) {
                     throw new ParserException(
                         'Anchor on a separate line cannot directly prefix a block sequence value in a mapping',
@@ -137,7 +167,7 @@ final class MappingParser implements TokenParserInterface
                 if (!$context->isFlowContext()
                     && $valueStartToken->is(TokenType::PLAIN_SCALAR)
                     && $value instanceof ScalarNode
-                    && (($valueStartToken->getMetadata()['was_multiline_input'] ?? false) === true)
+                    && $valueStartToken->wasMultilineInput()
                 ) {
                     $combinedValue = $value->getValue();
                     while (Parser::peek($context)->is(TokenType::PLAIN_SCALAR) && Parser::peek($context)->line === $valueStartToken->line) {
@@ -146,7 +176,7 @@ final class MappingParser implements TokenParserInterface
                     }
 
                     if ($combinedValue !== $value->getValue()) {
-                        $value = new ScalarNode($combinedValue);
+                        $value = new ScalarNode($combinedValue, $value->getMetadata());
                     }
                 }
 
@@ -154,6 +184,7 @@ final class MappingParser implements TokenParserInterface
                     && !$context->isFlowContext()
                     && $valueStartToken->is(TokenType::PLAIN_SCALAR)
                     && Parser::peek($context)->is(TokenType::INDENT)
+                    && $context->isStrictMode()
                 ) {
                     if (!(
                         $startIndentLevel > 0
@@ -172,6 +203,7 @@ final class MappingParser implements TokenParserInterface
                     && $valueStartToken->isScalar()
                     && Parser::peek($context)->is(TokenType::KEY_INDICATOR)
                     && Parser::peek($context)->line === $valueStartToken->line
+                    && $context->isStrictMode()
                 ) {
                     throw new ParserException(
                         'Unexpected mapping indicator in scalar value in block mapping',
@@ -189,6 +221,7 @@ final class MappingParser implements TokenParserInterface
                 && !$context->isExplicitKey()
                 && Parser::peek($context)->isScalar()
                 && Parser::peek($context)->line === $keyIndicatorToken->line
+                && $context->isStrictMode()
             ) {
                 throw new ParserException(
                     'Unexpected content on same line as mapping value',
@@ -197,6 +230,13 @@ final class MappingParser implements TokenParserInterface
             }
 
             $mapping->addPair($key, $value);
+
+            if ($isKey
+                && !$context->isFlowContext()
+                && Parser::peek($context)->is(TokenType::KEY_INDICATOR)
+            ) {
+                break;
+            }
         }
 
         return $mapping;

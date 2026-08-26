@@ -2,6 +2,7 @@
 
 namespace MaxBeckers\YamlParser\Tests;
 
+use MaxBeckers\YamlParser\Config\ParsingConfig;
 use MaxBeckers\YamlParser\YamlParser;
 use PHPUnit\Framework\TestCase;
 
@@ -111,5 +112,34 @@ YAML;
         $this->assertInstanceOf(\ArrayObject::class, $yaml['person']);
         $this->assertInstanceOf(\ArrayObject::class, $yaml['person']['spouse']);
         $this->assertSame($yaml['person'], $yaml['person']['spouse']['spouse']);
+    }
+
+    public function testParseYaml_usesParsingConfigWhenProvided(): void
+    {
+        $input = <<<'YAML'
+person:
+  name: John
+YAML;
+
+        $yamlParser = new YamlParser(config: new ParsingConfig(returnPlainArrays: true));
+        $yaml = $yamlParser->parse($input);
+
+        $this->assertIsArray($yaml);
+        $this->assertIsArray($yaml['person']);
+        $this->assertEquals('John', $yaml['person']['name']);
+    }
+
+    public function testParseYaml_keepsLegacyPreferPlainArraysCompatibility(): void
+    {
+        $input = <<<'YAML'
+person:
+  name: John
+YAML;
+
+        $yamlParser = new YamlParser(preferPlainArrays: true);
+        $yaml = $yamlParser->parse($input);
+
+        $this->assertIsArray($yaml);
+        $this->assertIsArray($yaml['person']);
     }
 }

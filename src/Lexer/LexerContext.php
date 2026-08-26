@@ -29,6 +29,7 @@ final class LexerContext
 
     public function __construct(
         private readonly string $input,
+        private readonly bool $trackTokenStartPositions = true,
     ) {
         $this->inputLength = strlen($input);
     }
@@ -136,6 +137,11 @@ final class LexerContext
     public function isAtEndOfFile(int $offset = 0): bool
     {
         return $this->position + $offset >= $this->inputLength;
+    }
+
+    public function shouldTrackTokenStartPositions(): bool
+    {
+        return $this->trackTokenStartPositions;
     }
 
     public function getNumberOfCharsTill(string $till, int $skip = 0): int

@@ -164,6 +164,16 @@ final class CollectionScanner extends AbstractScanner
         } elseif ($context->getMode() === ContextMode::EXPLICIT_KEY) {
             $context->popMode();
         }
+
+        if (!$context->isInFlow() && $context->getInputPart(1, 1) === "\t") {
+            $offset = 1 + $context->getNumberOfCharsCount(" \t", 1);
+            $charsToEol = $context->getNumberOfCharsTill("\n\r", $offset);
+            $lineRemainder = $context->getInputPart($charsToEol, $offset);
+            if (preg_match('/^[^\s\[\]{}#,][^#]*:\s*(?:#.*)?$/', $lineRemainder) === 1) {
+                throw new LexerException(sprintf('Tab character found in block indentation at line %d, column %d', $context->getLine(), $context->getColumn()));
+            }
+        }
+
         $context->addToken(self::createToken($context, TokenType::KEY_INDICATOR, ':'));
         $context->increasePositionInLine(1 + $context->getNumberOfCharsCount(" \t", 1));
     }

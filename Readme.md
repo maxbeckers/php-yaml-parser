@@ -38,6 +38,25 @@ $yamlParser = new YamlParser();
 $data = $yamlParser->parsePlainArray($yamlContent);
 ```
 
+### Parsing Configuration
+
+```php
+use MaxBeckers\YamlParser\Config\ParsingConfig;
+use MaxBeckers\YamlParser\YamlParser;
+
+$yamlParser = new YamlParser(config: new ParsingConfig(
+    strictMode: true,
+    returnPlainArrays: true,
+    maxDepth: 64,
+    maxFileSize: 10 * 1024 * 1024,
+    preserveMetadata: true,
+));
+$data = $yamlParser->parseFile('config.yaml');
+```
+
+Available options: `strictMode`, `returnPlainArrays`, `maxDepth`, `maxFileSize`, `lazyResolution`, and `preserveMetadata`.
+Use strict mode for spec-focused validation, plain arrays for lighter output, and depth/file-size limits for safer untrusted input.
+
 ### Custom Tag Handlers
 
 ```php
@@ -52,6 +71,37 @@ $yamlParser->getTagRegistry()->register(
 // database_host: !env DATABASE_HOST
 ```
 
+### Metadata Access
+
+```php
+use MaxBeckers\YamlParser\Config\ParsingConfig;
+use MaxBeckers\YamlParser\Service\ErrorReporter;
+use MaxBeckers\YamlParser\YamlParser;
+
+$yaml = <<<'YAML'
+name: Jane
+items:
+  - one
+YAML;
+
+$parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+$result = $parser->parse($yaml);
+
+$provider = $parser->getMetadataProvider();
+$valueMetadata = $provider->getMetadata('items.0');      // value node metadata
+$keyMetadata = $provider->getKeyMetadata('name');        // key node metadata
+$wrapped = $provider->getValueWithMetadata($result, 'items.0');
+
+$reporter = new ErrorReporter();
+echo $reporter->formatForPath('Invalid list item', $provider, 'items.0');
+// Invalid list item at line 3, column 4
+```
+
+Notes:
+- Metadata access requires `preserveMetadata: true`.
+- By default, path lookup follows the parser's single-document unwrapped output.
+- If you parse with `stripWrapperOnSingleItem: false`, use `getMetadataProvider(stripWrapperOnSingleItem: false)`.
+
 ## Architecture
 
 The library follows a multi-stage pipeline:
@@ -63,34 +113,26 @@ Lexer (tokenization)
     ↓
 Parser (AST building, implicit tag resolution)
     ↓
-Tag Resolver (explicit tag handling, extensible with custom tags)
+Resolver (explicit tags, anchors/aliases, merge keys)
     ↓
-Resolver (anchors/aliases)
-    ↓
-Resolver (merge keys)
-    ↓
-Constructor (to PHP ArrayObject)
+Constructor (to PHP ArrayObject / array)
 ```
+
+### Performance Tip for Large Files
+
+When parsing very large YAML files, disabling Xdebug can noticeably reduce runtime and memory overhead.
+
+```bash
+php -d xdebug.mode=off your-script.php
+```
+
+If you use Docker or CI, apply the same idea there (disable Xdebug for parse-heavy jobs).
 
 ## Background
 
-I have written this YAML parser library in PHP to learn more about YAML.
-Already a lot of months ago someone said to me "YAML is a weird beast", that triggered my curiosity to learn more about it.
-So i started to read the YAML specification and implement a parser for it.
-While implementing the parser i found out that YAML is indeed a weird beast.
-There are many edge cases and special cases that make it hard to implement a fully compliant parser.
-Also the specification itself is not always clear and sometimes even contradictory.
-So i had to make some decisions on how to handle certain cases.
-I tried to follow the specification as closely as possible, but there are some cases where i had to deviate from it.
-For example, the specification does not define how to handle merge keys in YAML 1.2, but i decided to implement it anyway, because it is a useful feature.
-This means that this library is not fully compliant with the YAML specification and probably never will be 100% compliant.
-Use at your own risk.
-But i make it publicly available in the hope that it might be useful to someone.
-
-## Todos
-compo
-- [ ] Add configurable options for parsing behavior (e.g. strict mode) (Phase 2)
-- [ ] Improve metadata handling for mappings and sequences (Phase 3)
+This parser started as a YAML learning project and has since grown into a robust YAML library.
+It now includes a configurable parsing pipeline, metadata preservation, resolver support for common YAML features, and broad PHPUnit coverage across real-world cases.
+The focus is correctness, clear extension points, and practical behavior for both application code and tooling use cases.
 
 ## Contributing
 

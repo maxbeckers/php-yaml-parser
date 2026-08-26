@@ -29,7 +29,15 @@ final class SequenceParser implements TokenParserInterface
             }
 
             $metadata = new NodeMetadata();
-            MetadataParser::parseMetadata($metadata, $context);
+            [$metadata, $metadataToken] = MetadataParser::parseMetadata($metadata, $context);
+
+            if ($context->shouldPreserveMetadata()) {
+                $positionToken = $metadataToken ?? Parser::peek($context);
+                $metadata = $metadata->withPosition(
+                    Parser::tokenLine($positionToken),
+                    Parser::tokenColumn($positionToken)
+                );
+            }
 
             $hasDeferredTaggedBlockNode = $metadata->getTag() !== null
                 && Parser::peek($context)->is(TokenType::DEDENT)
@@ -65,6 +73,7 @@ final class SequenceParser implements TokenParserInterface
             if (!$context->isFlowContext()
                 && Parser::peek($context)->is(TokenType::SEQUENCE_INDICATOR)
                 && Parser::peek($context)->line === $sequenceToken->line
+                && $context->isStrictMode()
             ) {
                 throw new ParserException(
                     'A sequence entry cannot start on the same line as a previous entry',

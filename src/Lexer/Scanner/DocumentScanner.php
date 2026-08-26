@@ -32,7 +32,7 @@ final class DocumentScanner extends AbstractScanner
         }
 
         if ($context->getMode() === ContextMode::STREAM_START && $currentChar !== '%' && $currentChar !== '-' && $currentChar !== '#') {
-            self::setDocumentStart($context);
+            self::setDocumentStart($context, false);
 
             return true;
         }
@@ -73,9 +73,9 @@ final class DocumentScanner extends AbstractScanner
 
         if (TokenType::DOCUMENT_START === $tokenType && $context->getMode() !== ContextMode::STREAM_START) {
             self::resetMode($context);
-            self::setDocumentStart($context);
+            self::setDocumentStart($context, true);
         } elseif (TokenType::DOCUMENT_START === $tokenType) {
-            self::setDocumentStart($context);
+            self::setDocumentStart($context, true);
         } else {
             self::resetMode($context);
         }
@@ -111,11 +111,14 @@ final class DocumentScanner extends AbstractScanner
         $context->addToken(self::createToken($context, TokenType::DOCUMENT_END, self::DOCUMENT_END));
     }
 
-    public static function setDocumentStart(LexerContext $context): void
+    public static function setDocumentStart(LexerContext $context, bool $isExplicit = true): void
     {
         $context->pushMode(ContextMode::DOCUMENT_START);
         $context->pushIndent(0);
         $context->startNewDocument();
-        $context->addToken(self::createToken($context, TokenType::DOCUMENT_START, self::DOCUMENT_START, [Token::METADATA_VERSION => $context->getYamlVersion()]));
+        $context->addToken(self::createToken($context, TokenType::DOCUMENT_START, self::DOCUMENT_START, [
+            Token::METADATA_VERSION => $context->getYamlVersion(),
+            Token::METADATA_DOCUMENT_EXPLICIT => $isExplicit,
+        ]));
     }
 }

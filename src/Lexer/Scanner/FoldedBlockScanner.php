@@ -15,6 +15,8 @@ final class FoldedBlockScanner extends AbstractScanner
             return false;
         }
         static::checkImplicitDocumentStart($context);
+        $startLine = $context->getLine();
+        $startColumn = $context->getColumn();
         $context->increasePosition();
 
         $chompingIndicator = null;
@@ -187,7 +189,12 @@ final class FoldedBlockScanner extends AbstractScanner
             $scalar = $trimmed === '' ? '' : $trimmed . "\n";
         }
 
-        $context->addToken(self::createToken($context, TokenType::FOLDED_SCALAR, $scalar));
+        $context->addToken(self::createToken(
+            $context,
+            TokenType::FOLDED_SCALAR,
+            $scalar,
+            self::createScalarTokenMetadata($context, true, $startLine, $startColumn)
+        ));
 
         return true;
     }

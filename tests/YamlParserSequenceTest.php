@@ -1014,7 +1014,6 @@ YAML;
 
     public function testParseYaml_withImplicitBlockMappingEntries()
     {
-        $this->markTestSkipped('Empty key and value are not yet supported in block mappings.');
         $input = <<<'YAML'
 plain key: in-line value
 : # Both empty
@@ -1058,7 +1057,6 @@ YAML;
 
     public function testParseYaml_withBlockCollectionNodes()
     {
-        $this->markTestSkipped('Sub sequence after tags is not yet supported correctly.');
         $input = <<<'YAML'
 sequence: !!seq
 - entry

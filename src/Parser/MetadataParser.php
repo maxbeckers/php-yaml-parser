@@ -8,15 +8,20 @@ use MaxBeckers\YamlParser\Node\NodeMetadata;
 
 final class MetadataParser
 {
-    public static function parseMetadata(NodeMetadata $metadata, ParserContext $context, bool $isKey = false): ?Token
+    /**
+     * @return array{NodeMetadata, ?Token, ?Token}
+     */
+    public static function parseMetadata(NodeMetadata $metadata, ParserContext $context, bool $isKey = false): array
     {
+        $firstMetadataToken = null;
         $lastMetadataToken = null;
 
         while (true) {
             $token = Parser::peek($context);
 
             if ($token->is(TokenType::TAG)) {
-                $metadata->setTag($token->value);
+                $metadata = $metadata->withTag($token->value);
+                $firstMetadataToken ??= $token;
                 $lastMetadataToken = $token;
                 Parser::advance($context);
                 continue;
@@ -27,7 +32,8 @@ final class MetadataParser
                     break;
                 }
 
-                $metadata->setAnchor($token->value);
+                $metadata = $metadata->withAnchor($token->value);
+                $firstMetadataToken ??= $token;
                 $lastMetadataToken = $token;
                 Parser::advance($context);
                 continue;
@@ -36,6 +42,6 @@ final class MetadataParser
             break;
         }
 
-        return $lastMetadataToken;
+        return [$metadata, $firstMetadataToken, $lastMetadataToken];
     }
 }

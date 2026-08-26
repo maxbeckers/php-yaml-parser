@@ -7,7 +7,10 @@ use MaxBeckers\YamlParser\Api\TokenInterface;
 final readonly class Token implements TokenInterface
 {
     public const METADATA_VERSION = 'version';
+    public const METADATA_DOCUMENT_EXPLICIT = 'document_explicit';
     public const METADATA_WAS_MULTILINE_INPUT = 'was_multiline_input';
+    public const METADATA_START_LINE = 'start_line';
+    public const METADATA_START_COLUMN = 'start_column';
 
     public function __construct(
         public TokenType $type,
@@ -42,5 +45,25 @@ final readonly class Token implements TokenInterface
     public function getMetadata(): array
     {
         return $this->metadata;
+    }
+
+    public function wasMultilineInput(): bool
+    {
+        return (bool) ($this->metadata[self::METADATA_WAS_MULTILINE_INPUT] ?? false);
+    }
+
+    public function getStartLine(): ?int
+    {
+        return $this->metadata[self::METADATA_START_LINE] ?? null;
+    }
+
+    public function getStartColumn(): ?int
+    {
+        return $this->metadata[self::METADATA_START_COLUMN] ?? null;
+    }
+
+    public function getMetadataValue(string $key, mixed $default = null): mixed
+    {
+        return $this->metadata[$key] ?? $default;
     }
 }

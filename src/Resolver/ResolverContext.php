@@ -3,6 +3,7 @@
 namespace MaxBeckers\YamlParser\Resolver;
 
 use MaxBeckers\YamlParser\Api\NodeInterface;
+use MaxBeckers\YamlParser\Exception\ResolverException;
 use MaxBeckers\YamlParser\Resolver\Anchor\AnchorOccurrence;
 use MaxBeckers\YamlParser\Resolver\Tag\TagRegistry;
 
@@ -20,14 +21,18 @@ final class ResolverContext
 
     private int $currentDocument = 0;
 
+    private int $currentDepth = 0;
+
     public function __construct(
-        private readonly TagRegistry $tagRegistry
+        private readonly TagRegistry $tagRegistry,
+        private readonly ?int $maxDepth = null,
     ) {
     }
 
     private function createCacheKey(string $name): string
     {
-        $occurrence = $this->currentAnchorOccurrence[$name]->getOccurrence() ?? 0;
+        $anchorOccurrence = $this->currentAnchorOccurrence[$name] ?? null;
+        $occurrence = $anchorOccurrence?->getOccurrence() ?? 0;
 
         return $this->currentDocument . '::' . $name . '::' . $occurrence;
     }
@@ -120,5 +125,19 @@ final class ResolverContext
     public function getTagRegistry(): TagRegistry
     {
         return $this->tagRegistry;
+    }
+
+    public function enterNodeDepth(): void
+    {
+        $this->currentDepth++;
+
+        if ($this->maxDepth !== null && $this->currentDepth > $this->maxDepth) {
+            throw new ResolverException("Maximum resolver depth of {$this->maxDepth} exceeded");
+        }
+    }
+
+    public function exitNodeDepth(): void
+    {
+        $this->currentDepth--;
     }
 }

@@ -36,6 +36,7 @@ final class MappingFlowParser implements TokenParserInterface
                 && Parser::peek($context)->line > $startToken->line
                 && Parser::peek($context)->column === 0
                 && !Parser::peek($context)->is(TokenType::MAPPING_END)
+                && $context->isStrictMode()
             ) {
                 throw new ParserException(
                     'Invalid indentation in flow mapping',
@@ -66,7 +67,14 @@ final class MappingFlowParser implements TokenParserInterface
             }
 
             $keyMetadata = new NodeMetadata();
-            MetadataParser::parseMetadata($keyMetadata, $context);
+            [$keyMetadata, $metadataToken] = MetadataParser::parseMetadata($keyMetadata, $context);
+            if ($context->shouldPreserveMetadata()) {
+                $positionToken = $metadataToken ?? Parser::peek($context);
+                $keyMetadata = $keyMetadata->withPosition(
+                    Parser::tokenLine($positionToken),
+                    Parser::tokenColumn($positionToken)
+                );
+            }
             $keyStartLine = Parser::peek($context)->line;
             if (Parser::peek($context)->isScalar()) {
                 $key = ScalarParser::parse($context, $keyMetadata, true);
@@ -93,6 +101,7 @@ final class MappingFlowParser implements TokenParserInterface
                 && Parser::peek($context)->is(TokenType::KEY_INDICATOR)
                 && Parser::peek($context)->line > $lineBeforeColon
                 && !$hasIndentBeforeColon
+                && $context->isStrictMode()
             ) {
                 throw new ParserException(
                     'Invalid indentation in flow mapping',
@@ -167,6 +176,7 @@ final class MappingFlowParser implements TokenParserInterface
             && Parser::peek($context)->is(TokenType::KEY_INDICATOR)
             && !$context->isExplicitKey()
             && $startToken->line !== $endToken->line
+            && $context->isStrictMode()
         ) {
             throw new ParserException(
                 'Flow collection keys cannot span multiple lines',

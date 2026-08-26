@@ -19,11 +19,11 @@ final readonly class Resolver
     ) {
     }
 
-    public function resolve(NodeInterface $ast): NodeInterface
+    public function resolve(NodeInterface $ast, ?int $maxDepth = null): NodeInterface
     {
         $ast = $this->applyTags($ast);
 
-        $context = new ResolverContext($this->tagRegistry);
+        $context = new ResolverContext($this->tagRegistry, $maxDepth);
 
         $this->collectAnchors($context, $ast);
 
@@ -71,8 +71,11 @@ final readonly class Resolver
     {
         $processed = new MappingNode([], $node->getMetadata());
 
-        foreach ($node->getMappingNodeItems() as $value) {
-            $processed->addMappingItem($value);
+        foreach ($node->getMappingNodeItems() as $item) {
+            $processed->addMappingItem(new MappingNodeItem(
+                $this->applyTags($item->getKey()),
+                $this->applyTags($item->getValue())
+            ));
         }
 
         return $processed;
@@ -126,47 +129,53 @@ final readonly class Resolver
 
     private function resolveNode(ResolverContext $context, NodeInterface $node): NodeInterface
     {
-        if ($alias = $node->getMetadata()->getAlias()) {
-            if (!$context->hasAnchor($alias)) {
-                $context->incrementAnchorOccurrence($alias, true);
+        $context->enterNodeDepth();
+
+        try {
+            if ($alias = $node->getMetadata()->getAlias()) {
                 if (!$context->hasAnchor($alias)) {
-                    throw new ResolverException("Unknown alias: *{$alias}");
+                    $context->incrementAnchorOccurrence($alias, true);
+                    if (!$context->hasAnchor($alias)) {
+                        throw new ResolverException("Unknown alias: *{$alias}");
+                    }
                 }
+
+                if ($context->isResolved($alias)) {
+                    return $context->getResolved($alias);
+                }
+
+                if ($context->isResolving($alias)) {
+                    return $context->getResolvingNode($alias);
+                }
+
+                $anchoredNode = $context->getAnchor($alias);
+
+                return $this->resolveNode($context, $anchoredNode);
             }
 
-            if ($context->isResolved($alias)) {
-                return $context->getResolved($alias);
+            if ($anchor = $node->getMetadata()->getAnchor()) {
+                $context->incrementAnchorOccurrence($anchor);
+                if ($context->isResolved($anchor)) {
+                    return $context->getResolved($anchor);
+                }
+
+                if ($context->isResolving($anchor)) {
+                    return $context->getResolvingNode($anchor);
+                }
+
+                $resolved = $this->createEmptyNode($node);
+                $context->startResolving($anchor, $resolved);
+                $this->populateNode($context, $node, $resolved);
+                $context->stopResolving($anchor);
+                $context->addResolved($anchor, $resolved);
+
+                return $resolved;
             }
 
-            if ($context->isResolving($alias)) {
-                return $context->getResolvingNode($alias);
-            }
-
-            $anchoredNode = $context->getAnchor($alias);
-
-            return $this->resolveNode($context, $anchoredNode);
+            return $this->resolveNodeContent($context, $node);
+        } finally {
+            $context->exitNodeDepth();
         }
-
-        if ($anchor = $node->getMetadata()->getAnchor()) {
-            $context->incrementAnchorOccurrence($anchor);
-            if ($context->isResolved($anchor)) {
-                return $context->getResolved($anchor);
-            }
-
-            if ($context->isResolving($anchor)) {
-                return $context->getResolvingNode($anchor);
-            }
-
-            $resolved = $this->createEmptyNode($node);
-            $context->startResolving($anchor, $resolved);
-            $this->populateNode($context, $node, $resolved);
-            $context->stopResolving($anchor);
-            $context->addResolved($anchor, $resolved);
-
-            return $resolved;
-        }
-
-        return $this->resolveNodeContent($context, $node);
     }
 
     private function resolveNodeContent(ResolverContext $context, NodeInterface $node): NodeInterface

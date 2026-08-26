@@ -5,7 +5,6 @@ namespace MaxBeckers\YamlParser\Lexer\Scanner;
 use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Lexer\ContextMode;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
-use MaxBeckers\YamlParser\Lexer\Token;
 use MaxBeckers\YamlParser\Lexer\TokenType;
 
 final class SingleQuotedScalarScanner extends AbstractScanner
@@ -16,6 +15,9 @@ final class SingleQuotedScalarScanner extends AbstractScanner
             return false;
         }
         static::checkImplicitDocumentStart($context);
+
+        $startLine = $context->getLine();
+        $startColumn = $context->getColumn();
 
         if ($context->getMode() === ContextMode::DOCUMENT_START) {
             $context->pushMode(ContextMode::BLOCK_KEY);
@@ -75,7 +77,12 @@ final class SingleQuotedScalarScanner extends AbstractScanner
             $finalScalar = str_replace([" \n ", "\n ", " \n"], "\n", $finalScalar);
         }
 
-        $context->addToken(self::createToken($context, TokenType::SINGLE_QUOTED_SCALAR, $finalScalar, [Token::METADATA_WAS_MULTILINE_INPUT => count($lines) > 1]));
+        $context->addToken(self::createToken(
+            $context,
+            TokenType::SINGLE_QUOTED_SCALAR,
+            $finalScalar,
+            self::createScalarTokenMetadata($context, count($lines) > 1, $startLine, $startColumn)
+        ));
 
         $spacesAfter = $context->getNumberOfCharsCount(' ', $charsToPossibleEnd + 2);
         $context->increasePosition($charsToPossibleEnd + 2 + $spacesAfter);

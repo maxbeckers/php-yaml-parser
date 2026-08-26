@@ -35,6 +35,7 @@ final class SequenceFlowParser implements TokenParserInterface
                 && Parser::peek($context)->line > $startToken->line
                 && Parser::peek($context)->column === 0
                 && !Parser::peek($context)->is(TokenType::SEQUENCE_END)
+                && $context->isStrictMode()
             ) {
                 throw new ParserException(
                     'Invalid indentation in flow sequence',
@@ -71,6 +72,7 @@ final class SequenceFlowParser implements TokenParserInterface
                     && Parser::peek($context)->line > $separator->line
                     && Parser::peek($context)->column <= 1
                     && !Parser::peek($context)->is(TokenType::SEQUENCE_END)
+                    && $context->isStrictMode()
                 ) {
                     throw new ParserException(
                         'Invalid indentation in flow sequence',
@@ -110,6 +112,7 @@ final class SequenceFlowParser implements TokenParserInterface
             && Parser::peek($context)->is(TokenType::KEY_INDICATOR)
             && !$context->isExplicitKey()
             && $startToken->line !== $endToken->line
+            && $context->isStrictMode()
         ) {
             throw new ParserException(
                 'Flow collection keys cannot span multiple lines',

@@ -7,10 +7,13 @@ use MaxBeckers\YamlParser\Api\NodeMetadataInterface;
 final class NodeMetadata implements NodeMetadataInterface
 {
     public function __construct(
-        protected ?string $tag = null,
-        protected ?string $anchor = null,
-        protected ?string $alias = null,
-        protected bool $isMergeKey = false
+        protected readonly ?string $tag = null,
+        protected readonly ?string $anchor = null,
+        protected readonly ?string $alias = null,
+        protected readonly bool $isMergeKey = false,
+        protected readonly ?int $line = null,
+        protected readonly ?int $column = null,
+        protected readonly array $customMetadata = [],
     ) {
     }
 
@@ -19,9 +22,17 @@ final class NodeMetadata implements NodeMetadataInterface
         return $this->tag ?? $default;
     }
 
-    public function setTag(?string $tag): void
+    public function withTag(?string $tag): self
     {
-        $this->tag = $tag;
+        return new self(
+            tag: $tag,
+            anchor: $this->anchor,
+            alias: $this->alias,
+            isMergeKey: $this->isMergeKey,
+            line: $this->line,
+            column: $this->column,
+            customMetadata: $this->customMetadata,
+        );
     }
 
     public function getAnchor(mixed $default = null): ?string
@@ -29,9 +40,17 @@ final class NodeMetadata implements NodeMetadataInterface
         return $this->anchor ?? $default;
     }
 
-    public function setAnchor(?string $anchor): void
+    public function withAnchor(?string $anchor): self
     {
-        $this->anchor = $anchor;
+        return new self(
+            tag: $this->tag,
+            anchor: $anchor,
+            alias: $this->alias,
+            isMergeKey: $this->isMergeKey,
+            line: $this->line,
+            column: $this->column,
+            customMetadata: $this->customMetadata,
+        );
     }
 
     public function getAlias(mixed $default = null): ?string
@@ -39,9 +58,17 @@ final class NodeMetadata implements NodeMetadataInterface
         return $this->alias ?? $default;
     }
 
-    public function setAlias(?string $alias): void
+    public function withAlias(?string $alias): self
     {
-        $this->alias = $alias;
+        return new self(
+            tag: $this->tag,
+            anchor: $this->anchor,
+            alias: $alias,
+            isMergeKey: $this->isMergeKey,
+            line: $this->line,
+            column: $this->column,
+            customMetadata: $this->customMetadata,
+        );
     }
 
     public function isMergeKey(): bool
@@ -49,8 +76,70 @@ final class NodeMetadata implements NodeMetadataInterface
         return $this->isMergeKey;
     }
 
-    public function setIsMergeKey(): void
+    public function withIsMergeKey(bool $isMergeKey = true): self
     {
-        $this->isMergeKey = true;
+        return new self(
+            tag: $this->tag,
+            anchor: $this->anchor,
+            alias: $this->alias,
+            isMergeKey: $isMergeKey,
+            line: $this->line,
+            column: $this->column,
+            customMetadata: $this->customMetadata,
+        );
+    }
+
+    public function withPosition(?int $line, ?int $column): self
+    {
+        return new self(
+            tag: $this->tag,
+            anchor: $this->anchor,
+            alias: $this->alias,
+            isMergeKey: $this->isMergeKey,
+            line: $line,
+            column: $column,
+            customMetadata: $this->customMetadata,
+        );
+    }
+
+    public function getLine(): ?int
+    {
+        return $this->line;
+    }
+
+    public function getColumn(): ?int
+    {
+        return $this->column;
+    }
+
+    public function getCustomMetadata(string $key, mixed $default = null): mixed
+    {
+        return $this->customMetadata[$key] ?? $default;
+    }
+
+    public function hasCustomMetadata(string $key): bool
+    {
+        return array_key_exists($key, $this->customMetadata);
+    }
+
+    public function withCustomMetadata(string $key, mixed $value): self
+    {
+        $customMetadata = $this->customMetadata;
+        $customMetadata[$key] = $value;
+
+        return new self(
+            tag: $this->tag,
+            anchor: $this->anchor,
+            alias: $this->alias,
+            isMergeKey: $this->isMergeKey,
+            line: $this->line,
+            column: $this->column,
+            customMetadata: $customMetadata,
+        );
+    }
+
+    public function getCustomMetadataMap(): array
+    {
+        return $this->customMetadata;
     }
 }

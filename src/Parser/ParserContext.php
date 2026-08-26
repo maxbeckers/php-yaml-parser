@@ -2,7 +2,9 @@
 
 namespace MaxBeckers\YamlParser\Parser;
 
+use MaxBeckers\YamlParser\Exception\ParserException;
 use MaxBeckers\YamlParser\Lexer\TokenStream;
+use MaxBeckers\YamlParser\Api\TokenInterface;
 use MaxBeckers\YamlParser\Format\Version;
 
 final class ParserContext
@@ -13,6 +15,10 @@ final class ParserContext
         private Version $yamlVersion = Version::VERSION_1_2,
         private bool $isExplicitKey = false,
         private int $flowDepth = 0,
+        private bool $strictMode = true,
+        private ?int $maxDepth = null,
+        private bool $preserveMetadata = false,
+        private int $currentDepth = 0,
     ) {
     }
 
@@ -69,5 +75,32 @@ final class ParserContext
     public function exitFlowContext(): void
     {
         $this->flowDepth--;
+    }
+
+    public function isStrictMode(): bool
+    {
+        return $this->strictMode;
+    }
+
+    public function shouldPreserveMetadata(): bool
+    {
+        return $this->preserveMetadata;
+    }
+
+    public function enterNodeDepth(TokenInterface $token): void
+    {
+        $this->currentDepth++;
+
+        if ($this->maxDepth !== null && $this->currentDepth > $this->maxDepth) {
+            throw new ParserException(
+                "Maximum parsing depth of {$this->maxDepth} exceeded",
+                $token
+            );
+        }
+    }
+
+    public function exitNodeDepth(): void
+    {
+        $this->currentDepth--;
     }
 }

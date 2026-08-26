@@ -27,10 +27,15 @@ final class ExplicitKeyParser
         }
 
         $context->setIsExplicitKey(true);
-        if (!$context->isFlowContext() && Parser::peek($context)->isScalar()) {
+        $canFastParseScalarKey = !$context->isFlowContext()
+            && Parser::peek($context)->isScalar()
+            && !(Parser::peek($context, 1)->is(TokenType::KEY_INDICATOR)
+                && Parser::peek($context)->line === Parser::peek($context, 1)->line);
+
+        if ($canFastParseScalarKey) {
             $key = ScalarParser::parse(context: $context);
         } else {
-            $key = Parser::parseValue(context: $context);
+            $key = Parser::parseValue(context: $context, isKey: true);
         }
         $context->setIsExplicitKey(false);
 

@@ -5,7 +5,6 @@ namespace MaxBeckers\YamlParser\Parser;
 use MaxBeckers\YamlParser\Api\NodeInterface;
 use MaxBeckers\YamlParser\Api\TokenParserInterface;
 use MaxBeckers\YamlParser\Exception\ParserException;
-use MaxBeckers\YamlParser\Lexer\Token;
 use MaxBeckers\YamlParser\Lexer\TokenType;
 use MaxBeckers\YamlParser\Node\NodeMetadata;
 use MaxBeckers\YamlParser\Node\ScalarNode;
@@ -82,7 +81,7 @@ final class ScalarParser implements TokenParserInterface
     {
         $token = Parser::peek($context);
 
-        $isMultiline = $token->getMetadata()[Token::METADATA_WAS_MULTILINE_INPUT] ?? false;
+        $isMultiline = $token->wasMultilineInput();
         $flowQuotedOk = $context->isFlowContext()
             && $token->isOneOf(TokenType::DOUBLE_QUOTED_SCALAR, TokenType::SINGLE_QUOTED_SCALAR, TokenType::PLAIN_SCALAR);
         if ($isMultiline && !$flowQuotedOk) {
@@ -102,7 +101,7 @@ final class ScalarParser implements TokenParserInterface
         }
 
         if ('<<' === $value) {
-            $metadata->setIsMergeKey();
+            $metadata = $metadata->withIsMergeKey();
         }
 
         Parser::advance($context);

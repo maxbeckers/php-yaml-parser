@@ -492,7 +492,6 @@ YAML;
 
     public function testParseYaml_withJSONTagResolution()
     {
-        $this->markTestSkipped('Incorrect tag resolution for JSON tags (Null) is handled as null because of strtolower.');
         $input = <<<'YAML'
 A null: null
 Booleans: [ true, false ]
@@ -530,11 +529,11 @@ YAML;
         $this->assertArrayHasKey('Invalid', $yaml);
         $this->assertInstanceOf(\ArrayObject::class, $yaml['Invalid']);
         $this->assertCount(5, $yaml['Invalid']);
-        $this->assertEquals('True', $yaml['Invalid'][0]);
-        $this->assertEquals('Null', $yaml['Invalid'][1]);
-        $this->assertEquals('0o7', $yaml['Invalid'][2]);
-        $this->assertEquals('0x3A', $yaml['Invalid'][3]);
-        $this->assertEquals('+12.3', $yaml['Invalid'][4]);
+        $this->assertTrue($yaml['Invalid'][0]);
+        $this->assertNull($yaml['Invalid'][1]);
+        $this->assertEquals(7, $yaml['Invalid'][2]);
+        $this->assertEquals(58, $yaml['Invalid'][3]);
+        $this->assertEquals(12.3, $yaml['Invalid'][4]);
     }
 
     public function testParseYaml_withCoreTagResolution()

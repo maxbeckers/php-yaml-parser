@@ -501,7 +501,6 @@ YAML;
 
     public function testParseYaml_withCompactBlockMappings()
     {
-        $this->markTestSkipped('Compact block mappings not yet supported for explicit key.');
         $input = <<<'YAML'
 - sun: yellow
 - ? earth: blue

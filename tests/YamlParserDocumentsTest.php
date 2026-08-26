@@ -123,7 +123,6 @@ YAML;
 
     public function testParseYaml_withBareDocuments()
     {
-        $this->markTestSkipped('Currently not supported: Bare documents without document markers.');
         $input = <<<'YAML'
 Bare
 document
@@ -139,12 +138,11 @@ YAML;
         $this->assertInstanceOf(\ArrayObject::class, $yaml);
         $this->assertCount(2, $yaml);
         $this->assertEquals('Bare document', $yaml[0]);
-        $this->assertEquals("%!PS-Adobe-2.0\n", $yaml[1]);
+        $this->assertEquals("%!PS-Adobe-2.0 # Not the first line\n", $yaml[1]);
     }
 
     public function testParseYaml_withExplicitDocuments()
     {
-        $this->markTestSkipped('Currently not supported: Explicit documents with document markers.');
         $input = <<<'YAML'
 ---
 { matches
@@ -166,7 +164,6 @@ YAML;
 
     public function testParseYaml_withDirectivesDocuments()
     {
-        $this->markTestSkipped('Second document with only directives and comment is not correctly parsed.');
         $input = <<<'YAML'
 %YAML 1.2
 --- |
@@ -188,7 +185,6 @@ YAML;
 
     public function testParseYaml_withStream()
     {
-        $this->markTestSkipped('Second document with only comment is not correctly parsed.');
         $input = <<<'YAML'
 Document
 ---

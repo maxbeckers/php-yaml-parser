@@ -15,6 +15,8 @@ final class LiteralBlockScanner extends AbstractScanner
             return false;
         }
         static::checkImplicitDocumentStart($context);
+        $startLine = $context->getLine();
+        $startColumn = $context->getColumn();
         $context->increasePosition();
 
         $chompingIndicator = null;
@@ -107,7 +109,7 @@ final class LiteralBlockScanner extends AbstractScanner
                     } elseif ($nextLineIndent <= $parentIndent && $nextCharAfterIndent !== '#') {
                         $nextCharsToEol = $context->getNumberOfCharsTill("\n\r", $peekPos + $nextLineIndent);
                         $nextLine = $context->getInputPart($nextCharsToEol, $peekPos + $nextLineIndent);
-                        if (preg_match('/:\s|:$|-\s|-$/', $nextLine)) {
+                        if (self::isDocumentBoundary($nextLine) || preg_match('/:\s|:$|-\s|-$/', $nextLine)) {
                             $willBreak = true;
                         }
                     }
@@ -143,7 +145,7 @@ final class LiteralBlockScanner extends AbstractScanner
                 $charsToEol = $context->getNumberOfCharsTill("\n\r", $lineIndent);
                 $line = $context->getInputPart($charsToEol, $lineIndent);
 
-                if (preg_match('/:\s|:$|-\s|-$/', $line)) {
+                if (self::isDocumentBoundary($line) || preg_match('/:\s|:$|-\s|-$/', $line)) {
                     break;
                 }
             }
@@ -187,7 +189,7 @@ final class LiteralBlockScanner extends AbstractScanner
                 } elseif ($nextLineIndent <= $parentIndent && $nextCharAfterIndent !== '#') {
                     $nextCharsToEol = $context->getNumberOfCharsTill("\n\r", $peekPos + $nextLineIndent);
                     $nextLine = $context->getInputPart($nextCharsToEol, $peekPos + $nextLineIndent);
-                    if (preg_match('/:\s|:$|-\s|-$/', $nextLine)) {
+                    if (self::isDocumentBoundary($nextLine) || preg_match('/:\s|:$|-\s|-$/', $nextLine)) {
                         $willBreak = true;
                     }
                 }
@@ -214,8 +216,26 @@ final class LiteralBlockScanner extends AbstractScanner
             $scalar = rtrim($scalar, "\n") . "\n";
         }
 
-        $context->addToken(self::createToken($context, TokenType::LITERAL_SCALAR, $scalar));
+        $context->addToken(self::createToken(
+            $context,
+            TokenType::LITERAL_SCALAR,
+            $scalar,
+            self::createScalarTokenMetadata($context, true, $startLine, $startColumn)
+        ));
 
         return true;
+    }
+
+    private static function isDocumentBoundary(string $line): bool
+    {
+        if (!str_starts_with($line, DocumentScanner::DOCUMENT_START)
+            && !str_starts_with($line, DocumentScanner::DOCUMENT_END)
+        ) {
+            return false;
+        }
+
+        $charAfterMarker = $line[3] ?? '';
+
+        return in_array($charAfterMarker, ['', ' ', "\t", '#'], true);
     }
 }

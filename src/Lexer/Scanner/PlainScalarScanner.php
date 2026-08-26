@@ -5,7 +5,6 @@ namespace MaxBeckers\YamlParser\Lexer\Scanner;
 use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Lexer\ContextMode;
 use MaxBeckers\YamlParser\Lexer\LexerContext;
-use MaxBeckers\YamlParser\Lexer\Token;
 use MaxBeckers\YamlParser\Lexer\TokenType;
 
 final class PlainScalarScanner extends AbstractScanner
@@ -43,6 +42,9 @@ final class PlainScalarScanner extends AbstractScanner
             throw new LexerException(sprintf('Cannot start plain scalar with \'%s\': Reserved indicator in line %d, column %d', $currentChar, $context->getLine(), $context->getColumn()));
         }
         static::checkImplicitDocumentStart($context);
+
+        $startLine = $context->getLine();
+        $startColumn = $context->getColumn();
 
         if ($context->getMode() === ContextMode::DOCUMENT_START) {
             $context->pushMode(ContextMode::BLOCK_KEY);
@@ -85,6 +87,14 @@ final class PlainScalarScanner extends AbstractScanner
                         if ($mode === ContextMode::BLOCK_SEQUENCE_ENTRY
                             && in_array($lineAheadFirstChar, ['&', '!'], true)
                             && $lineAheadIndent <= $currentIndent
+                        ) {
+                            break 2;
+                        }
+
+                        if ($mode === ContextMode::BLOCK_SEQUENCE_ENTRY
+                            && $lineAheadFirstChar === '-'
+                            && $lineAheadIndent === $currentIndent
+                            && in_array($context->getInputPart(1, $lineAheadOffset + $lineAheadIndent + 1), [' ', "\t", "\n", "\r", ''], true)
                         ) {
                             break 2;
                         }
@@ -236,7 +246,12 @@ final class PlainScalarScanner extends AbstractScanner
                 return true;
             }
 
-            $context->addToken(self::createToken($context, TokenType::PLAIN_SCALAR, $finalScalar, [Token::METADATA_WAS_MULTILINE_INPUT => false]));
+            $context->addToken(self::createToken(
+                $context,
+                TokenType::PLAIN_SCALAR,
+                $finalScalar,
+                self::createScalarTokenMetadata($context, false, $startLine, $startColumn)
+            ));
             $context->increasePositionInLine($charsToPossibleEnd + $context->getNumberOfCharsCount(' ', $charsToPossibleEnd));
 
             return true;
@@ -320,7 +335,12 @@ final class PlainScalarScanner extends AbstractScanner
 
             return true;
         }
-        $context->addToken(self::createToken($context, TokenType::PLAIN_SCALAR, $finalScalar, [Token::METADATA_WAS_MULTILINE_INPUT => count($lines) > 1]));
+        $context->addToken(self::createToken(
+            $context,
+            TokenType::PLAIN_SCALAR,
+            $finalScalar,
+            self::createScalarTokenMetadata($context, count($lines) > 1, $startLine, $startColumn)
+        ));
         $context->increasePositionInLine($charsToPossibleEnd + $context->getNumberOfCharsCount(' ', $charsToPossibleEnd));
 
         return true;

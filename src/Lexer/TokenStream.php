@@ -2,13 +2,18 @@
 
 namespace MaxBeckers\YamlParser\Lexer;
 
+use MaxBeckers\YamlParser\Exception\LexerException;
+
 final class TokenStream
 {
     private int $position = 0;
+    private int $tokenCount;
 
     public function __construct(
-        private readonly array $tokens
+        private array $tokens,
+        private readonly bool $releaseConsumedTokens = true,
     ) {
+        $this->tokenCount = count($tokens);
     }
 
     /**
@@ -27,6 +32,13 @@ final class TokenStream
         $token = $this->current();
         $this->position++;
 
+        if ($this->releaseConsumedTokens) {
+            $dropIndex = $this->position - 2;
+            if ($dropIndex >= 0 && array_key_exists($dropIndex, $this->tokens)) {
+                $this->tokens[$dropIndex] = null;
+            }
+        }
+
         return $token;
     }
 
@@ -35,7 +47,10 @@ final class TokenStream
      */
     public function peek(int $offset = 1): ?Token
     {
-        return $this->tokens[$this->position + $offset] ?? null;
+        $index = $this->position + $offset;
+        $token = $this->tokens[$index] ?? null;
+
+        return $token instanceof Token ? $token : null;
     }
 
     /**
@@ -43,7 +58,7 @@ final class TokenStream
      */
     public function isAtEnd(): bool
     {
-        return $this->position >= count($this->tokens) || $this->current() === null || $this->current()->is(TokenType::EOF);
+        return $this->position >= $this->tokenCount || $this->current() === null || $this->current()->is(TokenType::EOF);
     }
 
     /**
@@ -59,7 +74,7 @@ final class TokenStream
      */
     public function setPosition(int $position): void
     {
-        $this->position = max(0, min($position, count($this->tokens)));
+        $this->position = max(0, min($position, $this->tokenCount));
     }
 
     /**
@@ -75,7 +90,10 @@ final class TokenStream
      */
     public function remaining(): array
     {
-        return array_slice($this->tokens, $this->position);
+        return array_values(array_filter(
+            array_slice($this->tokens, $this->position),
+            static fn (mixed $token): bool => $token instanceof Token
+        ));
     }
 
     /**
@@ -83,7 +101,7 @@ final class TokenStream
      */
     public function all(): array
     {
-        return $this->tokens;
+        return array_values(array_filter($this->tokens, static fn (mixed $token): bool => $token instanceof Token));
     }
 
     /**
@@ -91,7 +109,7 @@ final class TokenStream
      */
     public function count(): int
     {
-        return count($this->tokens);
+        return $this->tokenCount;
     }
 
     /**
@@ -102,17 +120,14 @@ final class TokenStream
         $token = $this->current();
 
         if ($token === null) {
-            throw new YamlLexerException(
+            throw new LexerException(
                 "Expected {$type->value} but reached end of stream"
             );
         }
 
         if (!$token->is($type)) {
-            throw new YamlLexerException(
+            throw new LexerException(
                 "Expected {$type->value} but got {$token->type->value}",
-                null,
-                $token->line,
-                $token->column
             );
         }
 

@@ -25,7 +25,7 @@ final class AliasParser implements TokenParserInterface
             );
         }
 
-        $metadata->setAlias(Parser::peek($context)->value);
+        $metadata = $metadata->withAlias(Parser::peek($context)->value);
         Parser::advance($context);
 
         return new ScalarNode(null, $metadata);
