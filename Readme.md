@@ -131,7 +131,7 @@ If you use Docker or CI, apply the same idea there (disable Xdebug for parse-hea
 ## Background
 
 This parser started as a YAML learning project and has since grown into a robust YAML library.
-It now includes a configurable parsing pipeline, metadata preservation, resolver support for common YAML features, and broad PHPUnit coverage across real-world cases.
+It now includes a configurable parsing pipeline, metadata preservation, resolver support for common YAML features, and broad PHPUnit coverage.
 The focus is correctness, clear extension points, and practical behavior for both application code and tooling use cases.
 
 ## Contributing

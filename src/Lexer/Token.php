@@ -17,7 +17,7 @@ final readonly class Token implements TokenInterface
         public mixed $value = null,
         public int $line = 0,
         public int $column = 0,
-        public array $metadata = []
+        public ?array $metadata = null
     ) {
     }
 
@@ -44,26 +44,42 @@ final readonly class Token implements TokenInterface
 
     public function getMetadata(): array
     {
-        return $this->metadata;
+        return $this->metadata ?? [];
     }
 
     public function wasMultilineInput(): bool
     {
+        if ($this->metadata === null) {
+            return false;
+        }
+
         return (bool) ($this->metadata[self::METADATA_WAS_MULTILINE_INPUT] ?? false);
     }
 
     public function getStartLine(): ?int
     {
+        if ($this->metadata === null) {
+            return null;
+        }
+
         return $this->metadata[self::METADATA_START_LINE] ?? null;
     }
 
     public function getStartColumn(): ?int
     {
+        if ($this->metadata === null) {
+            return null;
+        }
+
         return $this->metadata[self::METADATA_START_COLUMN] ?? null;
     }
 
     public function getMetadataValue(string $key, mixed $default = null): mixed
     {
+        if ($this->metadata === null) {
+            return $default;
+        }
+
         return $this->metadata[$key] ?? $default;
     }
 }

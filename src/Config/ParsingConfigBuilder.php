@@ -10,6 +10,7 @@ final class ParsingConfigBuilder
     private ?int $maxFileSize = null;
     private bool $lazyResolution = false;
     private bool $preserveMetadata = false;
+    private bool $releaseConsumedTokens = true;
 
     public static function create(): self
     {
@@ -66,6 +67,13 @@ final class ParsingConfigBuilder
         return $this;
     }
 
+    public function withReleaseConsumedTokens(bool $releaseConsumedTokens): self
+    {
+        $this->releaseConsumedTokens = $releaseConsumedTokens;
+
+        return $this;
+    }
+
     public function build(): ParsingConfig
     {
         return new ParsingConfig(
@@ -75,6 +83,7 @@ final class ParsingConfigBuilder
             maxFileSize: $this->maxFileSize,
             lazyResolution: $this->lazyResolution,
             preserveMetadata: $this->preserveMetadata,
+            releaseConsumedTokens: $this->releaseConsumedTokens,
         );
     }
 }

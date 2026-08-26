@@ -64,13 +64,19 @@ final class YamlParser
     private function parseWithArrayPreference(string $yaml, bool $stripWrapperOnSingleItem, bool $preferPlainArrays): mixed
     {
         $tokens = Lexer::tokenize(new LexerContext($yaml, trackTokenStartPositions: $this->config->preserveMetadata));
+        unset($yaml);
+
+        $tokenStream = new TokenStream($tokens, releaseConsumedTokens: $this->config->releaseConsumedTokens);
+        unset($tokens);
+
         $parserContext = new ParserContext(
-            new TokenStream($tokens),
+            $tokenStream,
             strictMode: $this->config->strictMode,
             maxDepth: $this->config->maxDepth,
             preserveMetadata: $this->config->preserveMetadata,
         );
         $ast = Parser::parse($parserContext);
+        unset($parserContext, $tokenStream);
 
         if (!$this->config->lazyResolution || $this->astNeedsResolution($ast)) {
             $ast = $this->resolver->resolve($ast, $this->config->maxDepth);
@@ -80,6 +86,8 @@ final class YamlParser
         $constructor = new ArrayObjectConstructor();
 
         $serialized = $constructor->construct($ast, preferPlainArrays: $preferPlainArrays);
+        unset($constructor, $ast);
+
         if ($stripWrapperOnSingleItem && ($serialized instanceof \ArrayObject || is_array($serialized)) && count($serialized) === 1) {
             return $serialized[0];
         }

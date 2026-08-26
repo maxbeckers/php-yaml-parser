@@ -30,14 +30,7 @@ final class TokenStream
     public function next(): ?Token
     {
         $token = $this->current();
-        $this->position++;
-
-        if ($this->releaseConsumedTokens) {
-            $dropIndex = $this->position - 2;
-            if ($dropIndex >= 0 && array_key_exists($dropIndex, $this->tokens)) {
-                $this->tokens[$dropIndex] = null;
-            }
-        }
+        $this->advancePosition();
 
         return $token;
     }
@@ -58,7 +51,9 @@ final class TokenStream
      */
     public function isAtEnd(): bool
     {
-        return $this->position >= $this->tokenCount || $this->current() === null || $this->current()->is(TokenType::EOF);
+        $current = $this->current();
+
+        return $this->position >= $this->tokenCount || $current === null || $current->is(TokenType::EOF);
     }
 
     /**
@@ -142,7 +137,7 @@ final class TokenStream
         $token = $this->current();
 
         if ($token && $token->is($type)) {
-            $this->position++;
+            $this->advancePosition();
 
             return $token;
         }
@@ -159,7 +154,22 @@ final class TokenStream
             if (!$token->isOneOf(...$types)) {
                 break;
             }
-            $this->position++;
+
+            $this->advancePosition();
+        }
+    }
+
+    private function advancePosition(): void
+    {
+        $this->position++;
+
+        if (!$this->releaseConsumedTokens) {
+            return;
+        }
+
+        $dropIndex = $this->position - 2;
+        if ($dropIndex >= 0 && array_key_exists($dropIndex, $this->tokens)) {
+            $this->tokens[$dropIndex] = null;
         }
     }
 }

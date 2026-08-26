@@ -21,7 +21,7 @@ abstract class AbstractScanner
         LexerContext $context,
         TokenType $type,
         mixed $value = null,
-        array $metadata = [],
+        ?array $metadata = null,
         ?int $line = null,
         ?int $column = null
     ): Token {
@@ -35,14 +35,14 @@ abstract class AbstractScanner
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
     protected static function createScalarTokenMetadata(
         LexerContext $context,
         bool $wasMultilineInput,
         int $startLine,
         int $startColumn
-    ): array {
+    ): ?array {
         $metadata = [];
         if ($wasMultilineInput) {
             $metadata[Token::METADATA_WAS_MULTILINE_INPUT] = true;
@@ -53,6 +53,6 @@ abstract class AbstractScanner
             $metadata[Token::METADATA_START_COLUMN] = $startColumn;
         }
 
-        return $metadata;
+        return $metadata === [] ? null : $metadata;
     }
 }
