@@ -8,9 +8,7 @@ final class ParsingConfigBuilder
     private bool $returnPlainArrays = false;
     private ?int $maxDepth = null;
     private ?int $maxFileSize = null;
-    private bool $lazyResolution = false;
     private bool $preserveMetadata = false;
-    private bool $releaseConsumedTokens = true;
 
     public static function create(): self
     {
@@ -53,23 +51,9 @@ final class ParsingConfigBuilder
         return $this;
     }
 
-    public function withLazyResolution(bool $lazyResolution): self
-    {
-        $this->lazyResolution = $lazyResolution;
-
-        return $this;
-    }
-
     public function withPreserveMetadata(bool $preserveMetadata): self
     {
         $this->preserveMetadata = $preserveMetadata;
-
-        return $this;
-    }
-
-    public function withReleaseConsumedTokens(bool $releaseConsumedTokens): self
-    {
-        $this->releaseConsumedTokens = $releaseConsumedTokens;
 
         return $this;
     }
@@ -81,9 +65,7 @@ final class ParsingConfigBuilder
             returnPlainArrays: $this->returnPlainArrays,
             maxDepth: $this->maxDepth,
             maxFileSize: $this->maxFileSize,
-            lazyResolution: $this->lazyResolution,
             preserveMetadata: $this->preserveMetadata,
-            releaseConsumedTokens: $this->releaseConsumedTokens,
         );
     }
 }

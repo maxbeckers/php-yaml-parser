@@ -2,53 +2,24 @@
 
 namespace MaxBeckers\YamlParser;
 
-use MaxBeckers\YamlParser\Api\NodeInterface;
 use MaxBeckers\YamlParser\Config\ParsingConfig;
-use MaxBeckers\YamlParser\Lexer\Lexer;
-use MaxBeckers\YamlParser\Lexer\LexerContext;
-use MaxBeckers\YamlParser\Lexer\TokenStream;
+use MaxBeckers\YamlParser\Parser\ScanParser;
 use MaxBeckers\YamlParser\Metadata\MetadataProvider;
-use MaxBeckers\YamlParser\Node\DocumentNode;
-use MaxBeckers\YamlParser\Node\MappingNode;
-use MaxBeckers\YamlParser\Node\NodeMetadata;
-use MaxBeckers\YamlParser\Node\SequenceNode;
-use MaxBeckers\YamlParser\Node\YamlNode;
-use MaxBeckers\YamlParser\Parser\Parser;
-use MaxBeckers\YamlParser\Parser\ParserContext;
-use MaxBeckers\YamlParser\Resolver\Resolver;
-use MaxBeckers\YamlParser\Resolver\Tag\Basic\BinaryTagHandler;
-use MaxBeckers\YamlParser\Resolver\Tag\Basic\BoolTagHandler;
-use MaxBeckers\YamlParser\Resolver\Tag\Basic\FloatTagHandler;
-use MaxBeckers\YamlParser\Resolver\Tag\Basic\IntTagHandler;
-use MaxBeckers\YamlParser\Resolver\Tag\Basic\NullTagHandler;
-use MaxBeckers\YamlParser\Resolver\Tag\Basic\StringTagHandler;
-use MaxBeckers\YamlParser\Resolver\Tag\Basic\TimestampTagHandler;
-use MaxBeckers\YamlParser\Constructor\ArrayObjectConstructor;
-use MaxBeckers\YamlParser\Resolver\Tag\TagRegistry;
+use MaxBeckers\YamlParser\Tag\TagRegistry;
 
 final class YamlParser
 {
-    private Resolver $resolver;
-    private TagRegistry $tagRegistry;
     private ParsingConfig $config;
-    private ?NodeInterface $lastAst = null;
+    private TagRegistry $tagRegistry;
+    private ?array $lastMetadataTrees = null;
 
     public function __construct(
-        ?TagRegistry $tagRegistry = null,
         bool $preferPlainArrays = false,
         ?ParsingConfig $config = null,
+        ?TagRegistry $tagRegistry = null,
     ) {
-        $this->tagRegistry = $tagRegistry ?? new TagRegistry();
-        $this->resolver = new Resolver($this->tagRegistry);
         $this->config = $config ?? new ParsingConfig(returnPlainArrays: $preferPlainArrays);
-
-        $this->tagRegistry->register(new BinaryTagHandler());
-        $this->tagRegistry->register(new BoolTagHandler());
-        $this->tagRegistry->register(new FloatTagHandler());
-        $this->tagRegistry->register(new IntTagHandler());
-        $this->tagRegistry->register(new NullTagHandler());
-        $this->tagRegistry->register(new StringTagHandler());
-        $this->tagRegistry->register(new TimestampTagHandler());
+        $this->tagRegistry = $tagRegistry ?? new TagRegistry();
     }
 
     public function parse(string $yaml, bool $stripWrapperOnSingleItem = true): mixed
@@ -63,36 +34,119 @@ final class YamlParser
 
     private function parseWithArrayPreference(string $yaml, bool $stripWrapperOnSingleItem, bool $preferPlainArrays): mixed
     {
-        $tokens = Lexer::tokenize(new LexerContext($yaml, trackTokenStartPositions: $this->config->preserveMetadata));
-        unset($yaml);
+        $wantsPlainArrays = $this->config->returnPlainArrays || $preferPlainArrays;
+        $scanParser = new ScanParser($yaml, maxDepth: $this->config->maxDepth, strictMode: $this->config->strictMode, preferPlainArrays: $wantsPlainArrays, captureMetadata: $this->config->preserveMetadata, tagRegistry: $this->tagRegistry);
+        $serialized = $scanParser->parseDocuments();
 
-        $tokenStream = new TokenStream($tokens, releaseConsumedTokens: $this->config->releaseConsumedTokens);
-        unset($tokens);
-
-        $parserContext = new ParserContext(
-            $tokenStream,
-            strictMode: $this->config->strictMode,
-            maxDepth: $this->config->maxDepth,
-            preserveMetadata: $this->config->preserveMetadata,
-        );
-        $ast = Parser::parse($parserContext);
-        unset($parserContext, $tokenStream);
-
-        if (!$this->config->lazyResolution || $this->astNeedsResolution($ast)) {
-            $ast = $this->resolver->resolve($ast, $this->config->maxDepth);
+        if ($this->config->preserveMetadata) {
+            $this->lastMetadataTrees = $scanParser->getDocumentMetadataTrees();
         }
 
-        $this->lastAst = $this->config->preserveMetadata ? $ast : null;
-        $constructor = new ArrayObjectConstructor();
+        if ($wantsPlainArrays && $scanParser->hasAnchorsOrAliases()) {
+            $serialized = $this->toPlainArray($serialized);
+        }
+        $serialized = $this->unwrapSingleDocumentIfNeeded($serialized, $stripWrapperOnSingleItem);
 
-        $serialized = $constructor->construct($ast, preferPlainArrays: $preferPlainArrays);
-        unset($constructor, $ast);
+        return $wantsPlainArrays ? $serialized : $this->wrapArrayResult($serialized);
+    }
 
+    private function unwrapSingleDocumentIfNeeded(mixed $serialized, bool $stripWrapperOnSingleItem): mixed
+    {
         if ($stripWrapperOnSingleItem && ($serialized instanceof \ArrayObject || is_array($serialized)) && count($serialized) === 1) {
             return $serialized[0];
         }
 
         return $serialized;
+    }
+
+    private function wrapArrayResult(mixed $serialized): mixed
+    {
+        if (is_array($serialized)) {
+            return new \ArrayObject($serialized);
+        }
+
+        return $serialized;
+    }
+
+    private function toPlainArray(mixed $value): mixed
+    {
+        $cyclic = [];
+        $stack = [];
+        $visited = [];
+        $this->collectCyclicNodes($value, $stack, $cyclic, $visited);
+
+        return $this->convertToPlainArray($value, $cyclic);
+    }
+
+    /**
+     * Collect the object ids of every ArrayObject that takes part in a reference
+     * cycle. Those nodes must stay ArrayObject instances so the cycle survives
+     * the conversion to plain arrays.
+     *
+     * @param list<int> $stack
+     * @param array<int, true> $cyclic
+     * @param array<int, true> $visited
+     */
+    private function collectCyclicNodes(mixed $value, array &$stack, array &$cyclic, array &$visited): void
+    {
+        if ($value instanceof \ArrayObject) {
+            $objectId = spl_object_id($value);
+            $stackPos = array_search($objectId, $stack, true);
+            if ($stackPos !== false) {
+                for ($i = $stackPos, $count = count($stack); $i < $count; $i++) {
+                    $cyclic[$stack[$i]] = true;
+                }
+
+                return;
+            }
+
+            if (isset($visited[$objectId])) {
+                return;
+            }
+
+            $visited[$objectId] = true;
+            $stack[] = $objectId;
+            foreach ($value as $item) {
+                $this->collectCyclicNodes($item, $stack, $cyclic, $visited);
+            }
+            array_pop($stack);
+
+            return;
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                $this->collectCyclicNodes($item, $stack, $cyclic, $visited);
+            }
+        }
+    }
+
+    /** @param array<int, true> $cyclic */
+    private function convertToPlainArray(mixed $value, array $cyclic): mixed
+    {
+        if ($value instanceof \ArrayObject) {
+            if (isset($cyclic[spl_object_id($value)])) {
+                return $value;
+            }
+
+            $result = [];
+            foreach ($value as $key => $item) {
+                $result[$key] = $this->convertToPlainArray($item, $cyclic);
+            }
+
+            return $result;
+        }
+
+        if (is_array($value)) {
+            $result = [];
+            foreach ($value as $key => $item) {
+                $result[$key] = $this->convertToPlainArray($item, $cyclic);
+            }
+
+            return $result;
+        }
+
+        return $value;
     }
 
     public function parseFile(string $filename, bool $stripWrapperOnSingleItem = false): mixed
@@ -134,76 +188,17 @@ final class YamlParser
         return $contents;
     }
 
-    public function getLastAst(): ?NodeInterface
-    {
-        return $this->lastAst;
-    }
-
     public function getMetadataProvider(bool $stripWrapperOnSingleItem = true): MetadataProvider
     {
-        if ($this->lastAst === null) {
+        if ($this->lastMetadataTrees === null) {
             throw new \LogicException('Metadata is not available. Enable ParsingConfig::preserveMetadata and parse before requesting metadata.');
         }
 
-        return new MetadataProvider($this->lastAst, $stripWrapperOnSingleItem);
+        return new MetadataProvider($this->lastMetadataTrees, $stripWrapperOnSingleItem);
     }
 
-    public function getMetadataForPath(array|string|int|null $path = [], bool $stripWrapperOnSingleItem = true): ?NodeMetadata
+    public function getTagRegistry(): TagRegistry
     {
-        return $this->getMetadataProvider($stripWrapperOnSingleItem)->getMetadata($path);
-    }
-
-    public function getKeyMetadataForPath(array|string|int|null $path, bool $stripWrapperOnSingleItem = true): ?NodeMetadata
-    {
-        return $this->getMetadataProvider($stripWrapperOnSingleItem)->getKeyMetadata($path);
-    }
-
-    private function astNeedsResolution(NodeInterface $node): bool
-    {
-        $metadata = $node->getMetadata();
-        if ($metadata->getTag() !== null || $metadata->getAnchor() !== null || $metadata->getAlias() !== null || $metadata->isMergeKey()) {
-            return true;
-        }
-
-        return match (true) {
-            $node instanceof YamlNode => $this->documentsNeedResolution($node),
-            $node instanceof DocumentNode => $this->astNeedsResolution($node->getRoot()),
-            $node instanceof SequenceNode => $this->sequenceNeedsResolution($node),
-            $node instanceof MappingNode => $this->mappingNeedsResolution($node),
-            default => false,
-        };
-    }
-
-    private function documentsNeedResolution(YamlNode $node): bool
-    {
-        foreach ($node->getDocuments() as $document) {
-            if ($this->astNeedsResolution($document)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function sequenceNeedsResolution(SequenceNode $node): bool
-    {
-        foreach ($node->getItems() as $item) {
-            if ($this->astNeedsResolution($item)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function mappingNeedsResolution(MappingNode $node): bool
-    {
-        foreach ($node->getMappingNodeItems() as $item) {
-            if ($this->astNeedsResolution($item->getKey()) || $this->astNeedsResolution($item->getValue())) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->tagRegistry;
     }
 }

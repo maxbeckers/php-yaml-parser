@@ -38,6 +38,7 @@ YAML;
         $this->assertCount(1, $yaml['key2']);
         $this->assertArrayHasKey('key21', $yaml['key2']);
         $this->assertCount(2, $yaml['key2']['key21']);
+        $this->assertSame($yaml['key1']['key11'], $yaml['key2']['key21']);
     }
 
     public function testParseYaml_withNodePropertyIndicators()
@@ -123,6 +124,81 @@ YAML;
         $this->assertEquals('John', $yaml['spouse']['spouse']['spouse']['spouse']['name']);
         $this->assertEquals('John', $yaml['spouse']['spouse']['spouse']['spouse']['spouse']['spouse']['name']);
         $this->assertEquals('John', $yaml['spouse']['spouse']['spouse']['spouse']['spouse']['spouse']['spouse']['spouse']['name']);
+    }
+
+    public function testParseYaml_withSelfReferencingAnchor()
+    {
+        $input = <<<'YAML'
+a: &anchor
+  self: *anchor
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertInstanceOf(\ArrayObject::class, $yaml);
+        $this->assertArrayHasKey('a', $yaml);
+        $this->assertArrayHasKey('self', $yaml['a']);
+        // The alias must resolve to the exact same node instance (a true cycle),
+        // not leak the internal forward-alias marker as a nested array.
+        $this->assertSame($yaml['a'], $yaml['a']['self']);
+    }
+
+    public function testParseYaml_withSelfReferencingAnchor_plainArrays()
+    {
+        $parser = new YamlParser(preferPlainArrays: true);
+
+        $input = <<<'YAML'
+a: &anchor
+  self: *anchor
+YAML;
+
+        $yaml = $parser->parse($input);
+
+        // Cyclic nodes remain as ArrayObject "islands" even in plain-array mode,
+        // since a plain PHP array cannot hold a reference to itself.
+        $this->assertArrayHasKey('self', $yaml['a']);
+        $this->assertSame($yaml['a'], $yaml['a']['self']);
+    }
+
+    public function testParseYaml_withMutualForwardReferenceCycle()
+    {
+        $input = <<<'YAML'
+a: &a
+  ref_b: *b
+b: &b
+  ref_a: *a
+YAML;
+
+        $yaml = $this->yamlParser->parse($input);
+
+        $this->assertInstanceOf(\ArrayObject::class, $yaml);
+        $this->assertArrayHasKey('a', $yaml);
+        $this->assertArrayHasKey('b', $yaml);
+        // Forward alias (*b used before &b is defined) must resolve to the real
+        // node instances, not null.
+        $this->assertNotNull($yaml['a']['ref_b']);
+        $this->assertNotNull($yaml['b']['ref_a']);
+        $this->assertSame($yaml['b'], $yaml['a']['ref_b']);
+        $this->assertSame($yaml['a'], $yaml['b']['ref_a']);
+    }
+
+    public function testParseYaml_withMutualForwardReferenceCycle_plainArrays()
+    {
+        $parser = new YamlParser(preferPlainArrays: true);
+
+        $input = <<<'YAML'
+a: &a
+  ref_b: *b
+b: &b
+  ref_a: *a
+YAML;
+
+        $yaml = $parser->parse($input);
+
+        $this->assertNotNull($yaml['a']['ref_b']);
+        $this->assertNotNull($yaml['b']['ref_a']);
+        $this->assertSame($yaml['b'], $yaml['a']['ref_b']);
+        $this->assertSame($yaml['a'], $yaml['b']['ref_a']);
     }
 
     public function testParseYaml_withAnchorOverwrite()

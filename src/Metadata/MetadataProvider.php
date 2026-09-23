@@ -2,25 +2,22 @@
 
 namespace MaxBeckers\YamlParser\Metadata;
 
-use MaxBeckers\YamlParser\Api\NodeInterface;
-use MaxBeckers\YamlParser\Node\DocumentNode;
-use MaxBeckers\YamlParser\Node\MappingNode;
-use MaxBeckers\YamlParser\Node\MappingNodeItem;
 use MaxBeckers\YamlParser\Node\NodeMetadata;
-use MaxBeckers\YamlParser\Node\SequenceNode;
-use MaxBeckers\YamlParser\Node\YamlNode;
 
-final readonly class MetadataProvider
+final class MetadataProvider
 {
+    /**
+     * @param list<MetadataNode> $documentMetadataNodes one metadata tree per parsed document
+     */
     public function __construct(
-        private NodeInterface $ast,
-        private bool $stripWrapperOnSingleItem = true,
+        private readonly array $documentMetadataNodes,
+        private readonly bool $stripWrapperOnSingleItem = true,
     ) {
     }
 
     public function getMetadata(array|string|int|null $path = []): ?NodeMetadata
     {
-        return $this->resolveNode($this->normalizePath($path))?->getMetadata();
+        return $this->resolveNode($this->normalizePath($path))?->getOwnMetadata();
     }
 
     public function getKeyMetadata(array|string|int|null $path): ?NodeMetadata
@@ -33,13 +30,11 @@ final readonly class MetadataProvider
         $key = array_pop($normalizedPath);
         $parentNode = $this->resolveNode($normalizedPath);
 
-        if (!$parentNode instanceof MappingNode) {
+        if ($parentNode === null || !$parentNode->isMapping()) {
             return null;
         }
 
-        $mappingItem = $this->findMappingItemByKey($parentNode, $key);
-
-        return $mappingItem?->getKey()->getMetadata();
+        return $parentNode->getMappingKeyMetadata($key);
     }
 
     public function hasMetadata(array|string|int|null $path = []): bool
@@ -60,80 +55,43 @@ final readonly class MetadataProvider
     /**
      * @param array<int, int|string> $path
      */
-    private function resolveNode(array $path): ?NodeInterface
+    private function resolveNode(array $path): ?MetadataNode
     {
         $current = $this->getRootNodeForPublicValue();
 
         foreach ($path as $segment) {
-            if ($current instanceof DocumentNode) {
-                $current = $current->getRoot();
+            if ($current === null) {
+                return null;
             }
 
-            if ($current instanceof YamlNode) {
+            if ($current->isSequence()) {
                 $index = $this->toIndex($segment);
                 if ($index === null) {
                     return null;
                 }
 
-                $current = $current->getDocuments()[$index] ?? null;
+                $current = $current->getSequenceItemNode($index);
                 continue;
             }
 
-            if ($current instanceof SequenceNode) {
-                $index = $this->toIndex($segment);
-                if ($index === null) {
-                    return null;
-                }
-
-                $current = $current->getItems()[$index] ?? null;
-                continue;
-            }
-
-            if ($current instanceof MappingNode) {
-                $mappingItem = $this->findMappingItemByKey($current, $segment);
-                $current = $mappingItem?->getValue();
+            if ($current->isMapping()) {
+                $current = $current->getMappingValueNode($segment);
                 continue;
             }
 
             return null;
         }
 
-        if ($current instanceof DocumentNode) {
-            return $current->getRoot();
-        }
-
         return $current;
     }
 
-    private function getRootNodeForPublicValue(): NodeInterface
+    private function getRootNodeForPublicValue(): ?MetadataNode
     {
-        if (!$this->stripWrapperOnSingleItem) {
-            return $this->ast;
+        if ($this->stripWrapperOnSingleItem && count($this->documentMetadataNodes) === 1) {
+            return $this->documentMetadataNodes[0] ?? null;
         }
 
-        if ($this->ast instanceof YamlNode) {
-            $documents = $this->ast->getDocuments();
-            if (count($documents) !== 1) {
-                return $this->ast;
-            }
-
-            $document = $documents[0];
-
-            return $document instanceof DocumentNode ? $document->getRoot() : $document;
-        }
-
-        if ($this->ast instanceof SequenceNode && $this->isDocumentStreamSequence($this->ast)) {
-            $documents = $this->ast->getItems();
-            if (count($documents) !== 1) {
-                return $this->ast;
-            }
-
-            $document = $documents[0];
-
-            return $document instanceof DocumentNode ? $document->getRoot() : $document;
-        }
-
-        return $this->ast;
+        return MetadataNode::sequence($this->documentMetadataNodes, null);
     }
 
     /**
@@ -179,30 +137,6 @@ final readonly class MetadataProvider
         }
 
         return $current;
-    }
-
-    private function isDocumentStreamSequence(SequenceNode $sequenceNode): bool
-    {
-        foreach ($sequenceNode->getItems() as $item) {
-            if (!$item instanceof DocumentNode) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private function findMappingItemByKey(MappingNode $mappingNode, int|string $key): ?MappingNodeItem
-    {
-        $normalizedKey = (string) $key;
-
-        foreach ($mappingNode->getMappingNodeItems() as $item) {
-            if ($item->getKeySerialized() === $normalizedKey) {
-                return $item;
-            }
-        }
-
-        return null;
     }
 
     /**

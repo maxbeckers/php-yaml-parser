@@ -3,7 +3,6 @@
 namespace MaxBeckers\YamlParser\Tests\Metadata;
 
 use MaxBeckers\YamlParser\Config\ParsingConfig;
-use MaxBeckers\YamlParser\Metadata\MetadataProvider;
 use MaxBeckers\YamlParser\YamlParser;
 use PHPUnit\Framework\TestCase;
 
@@ -25,7 +24,7 @@ YAML;
         $nameValueMetadata = $provider->getMetadata('name');
         $this->assertNotNull($nameValueMetadata);
         $this->assertSame(1, $nameValueMetadata->getLine());
-        $this->assertSame(10, $nameValueMetadata->getColumn());
+        $this->assertSame(6, $nameValueMetadata->getColumn());
 
         $nameKeyMetadata = $provider->getKeyMetadata('name');
         $this->assertNotNull($nameKeyMetadata);
@@ -37,7 +36,6 @@ YAML;
         $this->assertSame(3, $firstItemMetadata->getLine());
         $this->assertSame(4, $firstItemMetadata->getColumn());
     }
-
     public function testGetValueWithMetadataSupportsArrayObjectAndPlainArrays(): void
     {
         $yaml = <<<'YAML'
@@ -77,17 +75,110 @@ YAML;
         $this->assertSame(1, $wrappedMetadata->getLine());
     }
 
-    public function testFromAstConstructorIsSupported(): void
+    public function testFlowMappingMetadataIsAvailable(): void
     {
-        $yaml = "foo: bar\n";
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse('{a: 1, b: 2}');
+
+        $provider = $parser->getMetadataProvider();
+
+        $this->assertNotNull($provider->getMetadata('a'));
+        $this->assertNotNull($provider->getKeyMetadata('b'));
+    }
+
+    public function testMultiDocumentMetadataUsesDocumentIndexes(): void
+    {
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse("---\nfoo: 1\n---\nbar: 2\n");
+
+        $provider = $parser->getMetadataProvider(false);
+
+        $this->assertNotNull($provider->getMetadata([0, 'foo']));
+        $this->assertNotNull($provider->getMetadata([1, 'bar']));
+    }
+
+    public function testCustomTagMetadataIsCaptured(): void
+    {
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse('custom: !example value');
+
+        $this->assertSame('!example', $parser->getMetadataProvider()->getMetadata('custom')?->getTag());
+    }
+
+    public function testDuplicateKeyAtDifferentNestingLevelsResolvesRealPosition(): void
+    {
+        $yaml = <<<'YAML'
+name: Outer
+nested:
+  name: Inner
+YAML;
 
         $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
         $parser->parse($yaml);
 
-        $ast = $parser->getLastAst();
-        $this->assertNotNull($ast);
+        $provider = $parser->getMetadataProvider();
 
-        $provider = new MetadataProvider($ast);
-        $this->assertSame(1, $provider->getMetadata('foo')?->getLine());
+        $outerNameMetadata = $provider->getMetadata('name');
+        $this->assertNotNull($outerNameMetadata);
+        $this->assertSame(1, $outerNameMetadata->getLine());
+
+        $innerNameMetadata = $provider->getMetadata(['nested', 'name']);
+        $this->assertNotNull($innerNameMetadata);
+        $this->assertSame(3, $innerNameMetadata->getLine());
+    }
+
+    public function testSiblingSequenceItemsDoNotShareAGlobalItemCounter(): void
+    {
+        $yaml = <<<'YAML'
+items:
+  - a
+  - b
+more:
+  - x
+  - y
+  - z
+YAML;
+
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse($yaml);
+
+        $provider = $parser->getMetadataProvider();
+
+        $this->assertSame(2, $provider->getMetadata(['items', 0])->getLine());
+        $this->assertSame(3, $provider->getMetadata(['items', 1])->getLine());
+        $this->assertSame(5, $provider->getMetadata(['more', 0])->getLine());
+        $this->assertSame(6, $provider->getMetadata(['more', 1])->getLine());
+        $this->assertSame(7, $provider->getMetadata(['more', 2])->getLine());
+    }
+
+    public function testRepeatedScalarValueAcrossSequencesResolvesItsOwnOccurrence(): void
+    {
+        $yaml = <<<'YAML'
+list1:
+  - dup
+  - other
+list2:
+  - dup
+YAML;
+
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse($yaml);
+
+        $provider = $parser->getMetadataProvider();
+
+        $this->assertSame(2, $provider->getMetadata(['list1', 0])->getLine());
+        $this->assertSame(5, $provider->getMetadata(['list2', 0])->getLine());
+    }
+
+    public function testNullMappingValueKeepsItsOwnSourcePosition(): void
+    {
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse("empty:\nnext: value\n");
+
+        $metadata = $parser->getMetadataProvider()->getMetadata('empty');
+
+        $this->assertNotNull($metadata);
+        $this->assertSame(1, $metadata->getLine());
+        $this->assertSame(6, $metadata->getColumn());
     }
 }

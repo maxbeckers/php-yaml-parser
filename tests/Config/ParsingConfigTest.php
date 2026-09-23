@@ -15,9 +15,7 @@ class ParsingConfigTest extends TestCase
         $this->assertFalse($config->returnPlainArrays);
         $this->assertNull($config->maxDepth);
         $this->assertNull($config->maxFileSize);
-        $this->assertFalse($config->lazyResolution);
         $this->assertFalse($config->preserveMetadata);
-        $this->assertTrue($config->releaseConsumedTokens);
     }
 
     public function testConstructor_allowsOverridingAllOptions(): void
@@ -27,18 +25,14 @@ class ParsingConfigTest extends TestCase
             returnPlainArrays: true,
             maxDepth: 8,
             maxFileSize: 1024,
-            lazyResolution: true,
             preserveMetadata: true,
-            releaseConsumedTokens: false,
         );
 
         $this->assertFalse($config->strictMode);
         $this->assertTrue($config->returnPlainArrays);
         $this->assertSame(8, $config->maxDepth);
         $this->assertSame(1024, $config->maxFileSize);
-        $this->assertTrue($config->lazyResolution);
         $this->assertTrue($config->preserveMetadata);
-        $this->assertFalse($config->releaseConsumedTokens);
     }
 
     public function testConstructor_throwsOnInvalidMaxDepth(): void
@@ -56,4 +50,5 @@ class ParsingConfigTest extends TestCase
 
         new ParsingConfig(maxFileSize: 0);
     }
+
 }

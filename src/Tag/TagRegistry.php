@@ -1,12 +1,12 @@
 <?php
 
-namespace MaxBeckers\YamlParser\Resolver\Tag;
+namespace MaxBeckers\YamlParser\Tag;
 
 use MaxBeckers\YamlParser\Api\TagHandlerInterface;
 
 final class TagRegistry
 {
-    /** @var array<TagHandlerInterface> */
+    /** @var list<TagHandlerInterface> */
     private array $handlers = [];
 
     public function register(TagHandlerInterface $handler): void

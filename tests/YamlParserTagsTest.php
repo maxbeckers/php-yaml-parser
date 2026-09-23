@@ -2,7 +2,9 @@
 
 namespace MaxBeckers\YamlParser\Tests;
 
+use MaxBeckers\YamlParser\Api\NodeMetadataInterface;
 use MaxBeckers\YamlParser\Exception\LexerException;
+use MaxBeckers\YamlParser\Tag\CustomTagHandler;
 use MaxBeckers\YamlParser\YamlParser;
 use PHPUnit\Framework\TestCase;
 
@@ -42,6 +44,80 @@ YAML;
         $this->assertArrayHasKey('picture', $yaml);
         $this->assertArrayHasKey('application specific tag', $yaml);
         $this->assertEquals("The semantics of the tag\nabove may be different for\ndifferent documents.\n", $yaml['application specific tag']);
+    }
+
+    public function testParseYaml_withCustomScalarTagHandler(): void
+    {
+        $this->yamlParser->getTagRegistry()->register(
+            new CustomTagHandler(
+                '!env',
+                static fn (mixed $value): string => 'resolved:' . $value,
+            ),
+        );
+
+        $yaml = $this->yamlParser->parse('service: !env APP_NAME');
+
+        $this->assertSame('resolved:APP_NAME', $yaml['service']);
+    }
+
+    public function testParseYaml_withCustomCollectionTagHandlerAndMetadata(): void
+    {
+        $capturedMetadata = null;
+        $this->yamlParser->getTagRegistry()->register(
+            new CustomTagHandler(
+                '!point',
+                static function (mixed $value, NodeMetadataInterface $metadata) use (&$capturedMetadata): array {
+                    $capturedMetadata = $metadata;
+
+                    return ['x' => $value['x'], 'y' => $value['y']];
+                },
+            ),
+        );
+
+        $yaml = $this->yamlParser->parse('point: !point {x: 3, y: 4}');
+
+        $this->assertInstanceOf(\ArrayObject::class, $yaml['point']);
+        $this->assertSame(['x' => 3, 'y' => 4], $yaml['point']->getArrayCopy());
+        $this->assertInstanceOf(NodeMetadataInterface::class, $capturedMetadata);
+        $this->assertSame('!point', $capturedMetadata->getTag());
+        $this->assertSame(1, $capturedMetadata->getLine());
+        $this->assertSame(7, $capturedMetadata->getColumn());
+    }
+
+    public function testParseYaml_withExpandedCustomTagHandler(): void
+    {
+        $this->yamlParser->getTagRegistry()->register(
+            new CustomTagHandler(
+                '!<tag:example.com,2000:app/widget>',
+                static fn (mixed $value): string => strtoupper((string) $value),
+            ),
+        );
+
+        $yaml = $this->yamlParser->parse(<<<'YAML'
+%TAG !e! tag:example.com,2000:app/
+---
+value: !e!widget custom
+YAML);
+
+        $this->assertSame('CUSTOM', $yaml['value']);
+    }
+
+    public function testParseYaml_withExpandedPrimaryCustomTagHandler(): void
+    {
+        $this->yamlParser->getTagRegistry()->register(
+            new CustomTagHandler(
+                '!<tag:example.com,2000:app/widget>',
+                static fn (mixed $value): string => strtoupper((string) $value),
+            ),
+        );
+
+        $yaml = $this->yamlParser->parse(<<<'YAML'
+%TAG ! tag:example.com,2000:app/
+---
+value: !widget custom
+YAML);
+
+        $this->assertSame('CUSTOM', $yaml['value']);
     }
 
     public function testParseYaml_withOnlyTagData()

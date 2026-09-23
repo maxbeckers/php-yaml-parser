@@ -110,12 +110,6 @@ class YamlParserErrorHandlingTest extends TestCase
         new YamlParser(config: new ParsingConfig(maxDepth: 0));
     }
 
-    public function testGetLastAstWithoutPreserveMetadataReturnsNull(): void
-    {
-        $this->yamlParser->parse("key: value\n");
-
-        $this->assertNull($this->yamlParser->getLastAst());
-    }
 
     public function testGetMetadataProviderWithoutPriorParseThrowsLogicException(): void
     {

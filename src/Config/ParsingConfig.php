@@ -9,9 +9,7 @@ final readonly class ParsingConfig
         public bool $returnPlainArrays = false,
         public ?int $maxDepth = null,
         public ?int $maxFileSize = null,
-        public bool $lazyResolution = false,
         public bool $preserveMetadata = false,
-        public bool $releaseConsumedTokens = true,
     ) {
         if ($this->maxDepth !== null && $this->maxDepth < 1) {
             throw new \InvalidArgumentException('maxDepth must be greater than 0 when provided.');
