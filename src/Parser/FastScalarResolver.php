@@ -53,7 +53,7 @@ final class FastScalarResolver
         if (strlen($value) > 2 && ($value[0] === '0') && ($value[1] === 'x' || $value[1] === 'X')) {
             $hex = substr($value, 2);
             if ($hex !== '' && ctype_xdigit($hex)) {
-                return base_convert($value, 16, 10);
+                return intval($hex, 16);
             }
 
             return $value;
@@ -62,7 +62,7 @@ final class FastScalarResolver
         if (strlen($value) > 2 && ($value[0] === '0') && ($value[1] === 'o' || $value[1] === 'O')) {
             $octal = substr($value, 2);
             if ($octal !== '' && preg_match('/^[0-7]+$/', $octal) === 1) {
-                return base_convert($value, 8, 10);
+                return intval($octal, 8);
             }
 
             return $value;

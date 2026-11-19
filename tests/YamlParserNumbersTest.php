@@ -3,6 +3,7 @@
 namespace MaxBeckers\YamlParser\Tests;
 
 use MaxBeckers\YamlParser\YamlParser;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class YamlParserNumbersTest extends TestCase
@@ -28,14 +29,43 @@ YAML;
         $this->assertInstanceOf(\ArrayObject::class, $yaml);
         $this->assertCount(4, $yaml);
         $this->assertArrayHasKey('canonical', $yaml);
-        $this->assertEquals(12345, $yaml['canonical']);
+        $this->assertSame(12345, $yaml['canonical']);
         $this->assertArrayHasKey('decimal', $yaml);
-        $this->assertEquals(12345, $yaml['decimal']);
+        $this->assertSame(12345, $yaml['decimal']);
         $this->assertArrayHasKey('octal', $yaml);
-        $this->assertEquals(12, $yaml['octal']);
+        $this->assertSame(12, $yaml['octal']);
         $this->assertArrayHasKey('hexadecimal', $yaml);
-        $this->assertEquals(12, $yaml['hexadecimal']);
+        $this->assertSame(12, $yaml['hexadecimal']);
 
+    }
+
+    #[DataProvider('provideBasePrefixedScalars')]
+    public function testBasePrefixedScalarTypes(string $input, int|string $expected): void
+    {
+        $this->assertSame($expected, $this->yamlParser->parse($input));
+        $this->assertSame($expected, $this->yamlParser->parse('value: ' . $input)['value']);
+        $this->assertSame($expected, $this->yamlParser->parse('[' . $input . ']')[0]);
+        $this->assertSame([$expected], $this->yamlParser->parsePlainArray('[' . $input . ']'));
+    }
+
+    public static function provideBasePrefixedScalars(): array
+    {
+        return [
+            'hexadecimal' => ['0x1F', 31],
+            'uppercase hexadecimal' => ['0X1f', 31],
+            'hexadecimal zero' => ['0x0', 0],
+            'hexadecimal leading zeros' => ['0x001F', 31],
+            'hexadecimal integer limit' => ['0x' . dechex(PHP_INT_MAX), PHP_INT_MAX],
+            'octal' => ['0o37', 31],
+            'uppercase octal' => ['0O37', 31],
+            'octal zero' => ['0o0', 0],
+            'octal integer limit' => ['0o' . decoct(PHP_INT_MAX), PHP_INT_MAX],
+            'single quoted hexadecimal' => ["'0x1F'", '0x1F'],
+            'double quoted hexadecimal' => ['"0x1F"', '0x1F'],
+            'quoted octal' => ["'0o37'", '0o37'],
+            'invalid hexadecimal' => ['0x1G', '0x1G'],
+            'invalid octal' => ['0o38', '0o38'],
+        ];
     }
 
     public function testParseYaml_withFloatingPoint()
