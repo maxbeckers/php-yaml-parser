@@ -160,12 +160,14 @@ trait SequenceScannerTrait
                 break;
             }
 
-            $this->pos += $nextIndent;
-
-            if ($this->isDocMarker('---') || $this->isDocMarker('...')) {
-                $this->pos -= $nextIndent;
+            $nextPos = $this->pos + $nextIndent;
+            if (($this->yaml[$nextPos] ?? '') !== '-'
+                || !in_array($this->yaml[$nextPos + 1] ?? '', [' ', "\t", "\n", "\r", ''], true)
+            ) {
                 break;
             }
+
+            $this->pos += $nextIndent;
         }
 
         if ($this->captureMetadata) {

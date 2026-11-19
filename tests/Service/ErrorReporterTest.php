@@ -46,4 +46,22 @@ YAML;
 
         $this->assertSame('Something failed', $reporter->format('Something failed'));
     }
+
+    public function testFormatIncludesOnlyAvailableSourcePosition(): void
+    {
+        $reporter = new ErrorReporter();
+
+        $this->assertSame(
+            'Invalid value at line 4',
+            $reporter->format('Invalid value', new NodeMetadata(line: 4)),
+        );
+        $this->assertSame(
+            'Invalid value at column 2',
+            $reporter->format('Invalid value', new NodeMetadata(column: 2)),
+        );
+        $this->assertSame(
+            'Invalid value',
+            $reporter->format('Invalid value', new NodeMetadata()),
+        );
+    }
 }

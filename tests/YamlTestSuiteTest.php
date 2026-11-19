@@ -17,7 +17,7 @@ class YamlTestSuiteTest extends TestCase
     }
 
     #[DataProvider('yamlTestSuiteProvider')]
-    public function testYamlTestSuite(string $testName, string $shortcode, string $file, bool $isErrorExpected)
+    public function testYamlTestSuite(string $testName, string $file, bool $isErrorExpected)
     {
         if ('' === $file) {
             $this->markTestSkipped('The YAML test suite is not available: ' . $testName);
@@ -46,7 +46,7 @@ class YamlTestSuiteTest extends TestCase
         $shortcodeDirs = glob($dataDir . '/*', GLOB_ONLYDIR);
 
         if (empty($shortcodeDirs)) {
-            yield 'yaml-test-suite-empty' => ['YAML Test Suite Empty', '', '', false, null];
+            yield 'yaml-test-suite-empty' => ['YAML Test Suite Empty', '', false];
 
             return;
         }
@@ -60,7 +60,7 @@ class YamlTestSuiteTest extends TestCase
             if (file_exists($shortcodeDir . '/in.yaml')) {
                 $isErrorExpected = file_exists($shortcodeDir . '/error');
                 $testName = is_file($shortcodeDir . '/===') ? trim(file_get_contents($shortcodeDir . '/===')) : $shortcode;
-                yield $shortcode => [$testName, $shortcode, $shortcodeDir . '/in.yaml', $isErrorExpected];
+                yield $shortcode => [$testName, $shortcodeDir . '/in.yaml', $isErrorExpected];
             } else {
                 $subDirs = glob($shortcodeDir . '/*', GLOB_ONLYDIR);
                 foreach ($subDirs as $subDir) {
@@ -68,7 +68,7 @@ class YamlTestSuiteTest extends TestCase
                         $shortcodeSub = $shortcode . '-' . basename($subDir);
                         $testName = is_file($subDir . '/===') ? trim(file_get_contents($subDir . '/===')) : $shortcode;
                         $isErrorExpected = file_exists($subDir . '/error');
-                        yield $shortcodeSub => [$testName, $shortcodeSub, $subDir . '/in.yaml', $isErrorExpected];
+                        yield $shortcodeSub => [$testName, $subDir . '/in.yaml', $isErrorExpected];
                     }
                 }
             }

@@ -181,4 +181,24 @@ YAML;
         $this->assertSame(1, $metadata->getLine());
         $this->assertSame(6, $metadata->getColumn());
     }
+
+    public function testPathLookupsHandleMissingKeysAndInvalidSequenceIndexes(): void
+    {
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $result = $parser->parse("users:\n  - name: Jane\n");
+        $provider = $parser->getMetadataProvider();
+
+        $this->assertTrue($provider->hasMetadata('users..0.name'));
+        $this->assertSame(
+            $provider->getMetadata('users.0.name'),
+            $provider->getMetadata(['users', '0', 'name']),
+        );
+        $this->assertFalse($provider->hasMetadata('users.missing'));
+        $this->assertNull($provider->getMetadata('users.missing'));
+        $this->assertNull($provider->getMetadata('users.name'));
+        $this->assertNull($provider->getKeyMetadata(['users', 0]));
+        $this->assertNull($provider->getKeyMetadata('users.missing'));
+        $this->assertNull($provider->getValueWithMetadata($result, 'users.missing')->getValue());
+        $this->assertFalse($provider->getValueWithMetadata($result, 'users.missing')->hasMetadata());
+    }
 }

@@ -2,9 +2,11 @@
 
 namespace MaxBeckers\YamlParser\Tests;
 
+use MaxBeckers\YamlParser\Config\ParsingConfig;
 use MaxBeckers\YamlParser\Exception\LexerException;
 use MaxBeckers\YamlParser\Exception\ParserException;
 use MaxBeckers\YamlParser\YamlParser;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class YamlParserSequenceTest extends TestCase
@@ -14,6 +16,87 @@ class YamlParserSequenceTest extends TestCase
     protected function setUp(): void
     {
         $this->yamlParser = new YamlParser();
+    }
+
+    #[DataProvider('indentlessSequenceProvider')]
+    public function testIndentlessSequenceLeavesSiblingMappingIntact(string $input, array $expected): void
+    {
+        foreach ([false, true] as $metadata) {
+            foreach ([false, true] as $strict) {
+                $parser = new YamlParser(config: new ParsingConfig(
+                    strictMode: $strict,
+                    preserveMetadata: $metadata,
+                ));
+
+                $this->assertSame($expected, $parser->parsePlainArray($input));
+                $objects = $parser->parse($input);
+                $this->assertInstanceOf(\ArrayObject::class, $objects['parent']['tags']);
+                $this->assertCount(count($expected['parent']['tags']), $objects['parent']['tags']);
+                $this->assertSame('meta/root', $objects['parent']['operationId']);
+                if ($metadata) {
+                    $line = substr_count(substr($input, 0, strpos($input, 'operationId:')), "\n") + 1;
+                    $this->assertSame($line, $parser->getMetadataProvider()->getKeyMetadata('parent.operationId')?->getLine());
+                    $this->assertSame(2, $parser->getMetadataProvider()->getKeyMetadata('parent.operationId')?->getColumn());
+                }
+            }
+        }
+    }
+
+    public static function indentlessSequenceProvider(): iterable
+    {
+        $expected = ['parent' => ['tags' => ['meta'], 'operationId' => 'meta/root']];
+        yield 'nested sibling' => ["parent:\n  tags:\n  - meta\n  operationId: meta/root\n", $expected];
+        yield 'CRLF' => ["parent:\r\n  tags:\r\n  - meta\r\n  operationId: meta/root\r\n", $expected];
+        yield 'mapping item' => [
+            "parent:\n  tags:\n  - name: meta\n  operationId: meta/root\n",
+            ['parent' => ['tags' => [['name' => 'meta']], 'operationId' => 'meta/root']],
+        ];
+        yield 'dash-prefixed sibling key' => [
+            "parent:\n  tags:\n  - meta\n  -key: value\n  operationId: meta/root\n",
+            ['parent' => ['tags' => ['meta'], '-key' => 'value', 'operationId' => 'meta/root']],
+        ];
+    }
+
+    public function testIndentedDashContinuesPlainScalarInsteadOfStartingSequence(): void
+    {
+        $input = <<<'YAML'
+properties:
+  id:
+    type: string
+    description: The filename without the extension
+      - for example, `optimizer` for an `optimizer.agent.md`
+      custom agent.
+  tags:
+  - meta
+YAML;
+
+        $this->assertSame([
+            'properties' => [
+                'id' => [
+                    'type' => 'string',
+                    'description' => 'The filename without the extension - for example, `optimizer` for an `optimizer.agent.md` custom agent.',
+                ],
+                'tags' => ['meta'],
+            ],
+        ], $this->yamlParser->parsePlainArray($input));
+    }
+
+    public function testDedentedSequenceItemDoesNotBecomeEmptyMappingValue(): void
+    {
+        $input = "seats:\n- team:\n    parent:\n- team:\n    parent: other\n";
+
+        $this->assertSame([
+            'seats' => [['team' => ['parent' => null]], ['team' => ['parent' => 'other']]],
+        ], $this->yamlParser->parsePlainArray($input));
+    }
+
+    public function testDashPrefixedKeyDoesNotBecomeEmptyMappingValue(): void
+    {
+        $input = "parent:\n  empty:\n  -key: value\n";
+
+        $this->assertSame([
+            'parent' => ['empty' => null, '-key' => 'value'],
+        ], $this->yamlParser->parsePlainArray($input));
     }
 
     public function testParseYaml_withListOnRootLevel()

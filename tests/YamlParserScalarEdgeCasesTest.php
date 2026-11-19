@@ -14,6 +14,15 @@ class YamlParserScalarEdgeCasesTest extends TestCase
         $this->yamlParser = new YamlParser();
     }
 
+    public function testQuotedLineFoldingPreservesEscapedTrailingWhitespace(): void
+    {
+        foreach (['t' => "\t", ' ' => ' ', 'x20' => ' ', 'u0009' => "\t"] as $escape => $value) {
+            $input = 'text: "first\\' . $escape . "  \n  second\"\n";
+
+            $this->assertSame(['text' => 'first' . $value . ' second'], $this->yamlParser->parsePlainArray($input));
+        }
+    }
+
     public function testTildeIsNull(): void
     {
         $result = $this->yamlParser->parse('~');

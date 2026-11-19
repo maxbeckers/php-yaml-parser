@@ -118,7 +118,7 @@ trait BlockScalarScannerTrait
         ?string $chomp,
         bool $folded,
     ): string {
-        $blockIndent = $explicitIndent;
+        $blockIndent = $explicitIndent === null ? null : max(0, $contextIndent) + $explicitIndent;
         $lines = [];
         $kind = $folded ? 'Folded' : 'Literal';
         $leadingEmptyIndent = 0;

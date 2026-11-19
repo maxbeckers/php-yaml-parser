@@ -114,6 +114,25 @@ YAML;
         $this->assertSame($yaml['person'], $yaml['person']['spouse']['spouse']);
     }
 
+    public function testParsePlainArrayConvertsSharedNonCyclicAliasesToArrays(): void
+    {
+        $input = <<<'YAML'
+defaults: &defaults
+  retries: 3
+service_a: *defaults
+service_b: *defaults
+YAML;
+
+        $yaml = (new YamlParser())->parsePlainArray($input);
+
+        $this->assertIsArray($yaml);
+        $this->assertIsArray($yaml['defaults']);
+        $this->assertIsArray($yaml['service_a']);
+        $this->assertIsArray($yaml['service_b']);
+        $this->assertSame(['retries' => 3], $yaml['service_a']);
+        $this->assertSame($yaml['service_a'], $yaml['service_b']);
+    }
+
     public function testParseYaml_usesParsingConfigWhenProvided(): void
     {
         $input = <<<'YAML'

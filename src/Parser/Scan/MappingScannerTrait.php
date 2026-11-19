@@ -58,13 +58,15 @@ trait MappingScannerTrait
                     } else {
                         $nextIndent = $this->countLineIndent();
                         $nextChar = $this->yaml[$this->pos + $nextIndent] ?? '';
+                        $nextIsSequence = $nextChar === '-'
+                            && in_array($this->yaml[$this->pos + $nextIndent + 1] ?? '', [' ', "\t", "\n", "\r", ''], true);
 
-                        if ($nextIndent <= $indent && $nextChar !== '-') {
+                        if ($nextIndent < $indent || ($nextIndent === $indent && !$nextIsSequence)) {
                             $value = null;
                         } else {
                             $this->pos += $nextIndent;
-                            $value = $nextChar === '-' ? $this->parseBlockSequence($nextIndent) : $this->parseNode($nextIndent);
-                            if ($nextChar === '-' && !$this->isAtLineStart()) {
+                            $value = $nextIsSequence ? $this->parseBlockSequence($nextIndent) : $this->parseNode($nextIndent);
+                            if ($nextIsSequence && !$this->isAtLineStart()) {
                                 $this->skipInlineComment();
                                 if (!$this->isAtLineStart() && $this->pos < $this->len) {
                                     throw new ParserException("Unexpected content after block sequence at line {$this->line}");

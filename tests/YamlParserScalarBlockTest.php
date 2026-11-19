@@ -15,6 +15,25 @@ class YamlParserScalarBlockTest extends TestCase
         $this->yamlParser = new YamlParser();
     }
 
+    public function testExplicitBlockIndentIsRelativeToParentIndentation(): void
+    {
+        foreach (['|2-', '|-2', '>2-', '>-2'] as $header) {
+            $input = "parent:\n  text: {$header}\n\n    first\n    second\n  sibling: value\n";
+            $expected = $header[0] === '|' ? "\nfirst\nsecond" : "\nfirst second";
+
+            $this->assertSame([
+                'parent' => ['text' => $expected, 'sibling' => 'value'],
+            ], $this->yamlParser->parsePlainArray($input));
+        }
+    }
+
+    public function testExplicitBlockIndentInNestedSequence(): void
+    {
+        $input = "parent:\n  - |2-\n    first\n    second\n  - last\n";
+
+        $this->assertSame(['parent' => ["first\nsecond", 'last']], $this->yamlParser->parsePlainArray($input));
+    }
+
     public function testParseYaml_withHtmlToYaml()
     {
         $input = <<<'YAML'

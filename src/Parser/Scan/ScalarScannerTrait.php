@@ -129,7 +129,9 @@ trait ScalarScannerTrait
                             $currentLineStart = $this->pos;
                             break;
                         }
-                        if ($nc === '-' && $p + 1 < $this->len && ($this->yaml[$p + 1] === ' ' || $this->yaml[$p + 1] === "\t")) {
+                        if ($nc === '-' && $nextIndent === $contextIndent && $p + 1 < $this->len
+                            && ($this->yaml[$p + 1] === ' ' || $this->yaml[$p + 1] === "\t")
+                        ) {
                             $this->pos = $savedPos;
                             $this->line = $savedLine;
                             $currentLineStart = $this->pos;
@@ -228,7 +230,7 @@ trait ScalarScannerTrait
 
             if ($c === '-') {
                 $next = $this->pos + 1 < $this->len ? $this->yaml[$this->pos + 1] : '';
-                if (($next === ' ' || $next === "\t") && $this->pos === $currentLineStart) {
+                if (($next === ' ' || $next === "\t") && $this->pos === $start) {
                     break;
                 }
                 if ($this->pos === $currentLineStart && $this->isDocMarker('---')) {
@@ -580,8 +582,12 @@ trait ScalarScannerTrait
             }
 
             $end = strcspn($this->yaml, "\"\\\n\r", $this->pos);
-            $raw .= substr($this->yaml, $this->pos, $end);
+            $chunk = substr($this->yaml, $this->pos, $end);
             $this->pos += $end;
+            if (in_array($this->yaml[$this->pos] ?? '', ["\n", "\r"], true)) {
+                $chunk = rtrim($chunk, " \t");
+            }
+            $raw .= $chunk;
 
             if ($this->pos >= $this->len) {
                 throw new LexerException('Unclosed double-quoted scalar.');
@@ -616,7 +622,6 @@ trait ScalarScannerTrait
                 continue;
             }
 
-            $raw = rtrim($raw, " \t");
             $this->consumeNewline();
             $spaceCount = strspn($this->yaml, " \t", $this->pos);
             if ($this->rejectTabQuotedIndent && $spaceCount > 0 && ($this->yaml[$this->pos] ?? '') === "\t") {
