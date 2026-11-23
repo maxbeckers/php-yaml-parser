@@ -20,6 +20,30 @@ final class MetadataProvider
         return $this->resolveNode($this->normalizePath($path))?->getOwnMetadata();
     }
 
+    /**
+     * Return the syntactic kind of a node, or null when it is unavailable.
+     *
+     * Alias nodes are reported as unknown rather than as scalars: their
+     * resolved values may be collections and their metadata has no child tree.
+     *
+     * @return 'mapping'|'sequence'|'scalar'|null
+     */
+    public function getNodeKind(array|string|int|null $path = []): ?string
+    {
+        $node = $this->resolveNode($this->normalizePath($path));
+        if ($node === null || $node->getOwnMetadata()?->getAlias() !== null) {
+            return null;
+        }
+        if ($node->isMapping()) {
+            return 'mapping';
+        }
+        if ($node->isSequence()) {
+            return 'sequence';
+        }
+
+        return $node->getOwnMetadata() === null ? null : 'scalar';
+    }
+
     public function getKeyMetadata(array|string|int|null $path): ?NodeMetadata
     {
         $normalizedPath = $this->normalizePath($path);

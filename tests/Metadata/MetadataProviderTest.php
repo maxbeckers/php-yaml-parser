@@ -201,4 +201,70 @@ YAML;
         $this->assertNull($provider->getValueWithMetadata($result, 'users.missing')->getValue());
         $this->assertFalse($provider->getValueWithMetadata($result, 'users.missing')->hasMetadata());
     }
+
+    public function testNodeKindsDistinguishEmptyCollectionsWithoutChangingParsedValues(): void
+    {
+        $yaml = <<<'YAML'
+emptyObject: {}
+emptyArray: []
+objects:
+  - {}
+  - key: value
+scalars: [null, 42]
+anchor: &empty {}
+alias: *empty
+YAML;
+        foreach ([false, true] as $plain) {
+            $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true, returnPlainArrays: $plain));
+            $value = $parser->parse($yaml);
+            $provider = $parser->getMetadataProvider();
+            $this->assertSame('mapping', $provider->getNodeKind());
+            $this->assertSame('mapping', $provider->getNodeKind('emptyObject'));
+            $this->assertSame('sequence', $provider->getNodeKind('emptyArray'));
+            $this->assertSame('sequence', $provider->getNodeKind('objects'));
+            $this->assertSame('mapping', $provider->getNodeKind(['objects', 0]));
+            $this->assertSame('mapping', $provider->getNodeKind(['objects', 1]));
+            $this->assertSame('scalar', $provider->getNodeKind(['objects', 1, 'key']));
+            $this->assertSame('scalar', $provider->getNodeKind(['scalars', 0]));
+            $this->assertSame('mapping', $provider->getNodeKind('anchor'));
+            $this->assertNull($provider->getNodeKind('alias'));
+            $this->assertNull($provider->getNodeKind('missing'));
+            if ($plain) {
+                $this->assertSame([], $value['emptyArray']);
+            } else {
+                $this->assertInstanceOf(\ArrayObject::class, $value['emptyArray']);
+                $this->assertSame([], $value['emptyArray']->getArrayCopy());
+            }
+        }
+    }
+
+    public function testNodeKindsRespectDocumentWrappers(): void
+    {
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse("---\na: []\n---\n{}\n", false);
+        $provider = $parser->getMetadataProvider(false);
+        $this->assertSame('sequence', $provider->getNodeKind());
+        $this->assertSame('mapping', $provider->getNodeKind([0]));
+        $this->assertSame('sequence', $provider->getNodeKind([0, 'a']));
+        $this->assertSame('mapping', $provider->getNodeKind([1]));
+    }
+
+    public function testAliasesRemainUnknownAndExposeTheirSourceMetadata(): void
+    {
+        $yaml = <<<'YAML'
+base: &base [1, 2]
+aliases:
+  - *base
+  - *base
+YAML;
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse($yaml);
+        $provider = $parser->getMetadataProvider();
+        $this->assertSame('sequence', $provider->getNodeKind('base'));
+        foreach ([0, 1] as $index) {
+            $this->assertNull($provider->getNodeKind(['aliases', $index]));
+            $this->assertSame('base', $provider->getMetadata(['aliases', $index])?->getAlias());
+            $this->assertNull($provider->getNodeKind(['aliases', $index, 0]));
+        }
+    }
 }

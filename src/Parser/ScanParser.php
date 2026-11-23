@@ -346,13 +346,14 @@ final class ScanParser
 
         $value = $this->parseNodeCore($indent, $nodeCol);
 
+        $childTree = $this->lastNodeMetadataTree;
         $ownMeta = new NodeMetadata(
             tag: $this->pendingTagForMetadata,
             anchor: $this->pendingAnchorForMetadata,
+            alias: $childTree?->getOwnMetadata()?->getAlias(),
             line: $startLine,
             column: $startCol,
         );
-        $childTree = $this->lastNodeMetadataTree;
         $this->lastNodeMetadataTree = $childTree !== null
             ? $childTree->withOwnMetadata($ownMeta)
             : MetadataNode::scalar($ownMeta);

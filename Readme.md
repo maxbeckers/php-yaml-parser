@@ -105,12 +105,19 @@ $result = $parser->parse($yaml);
 $provider = $parser->getMetadataProvider();
 $valueMetadata = $provider->getMetadata('items.0');      // value node metadata
 $keyMetadata = $provider->getKeyMetadata('name');        // key node metadata
+$kind = $provider->getNodeKind('items');                 // 'sequence'
 $wrapped = $provider->getValueWithMetadata($result, 'items.0');
 
 $reporter = new ErrorReporter();
 echo $reporter->formatForPath('Invalid list item', $provider, 'items.0');
 // Invalid list item at line 3, column 4
 ```
+
+`getNodeKind()` returns `mapping`, `sequence`, `scalar`, or `null` when the
+path or its kind is unavailable. It distinguishes empty mappings from empty
+sequences without changing parsed values. Alias nodes return `null` because
+their metadata does not currently include the resolved node's tree; callers
+that require exact shapes should reject such nodes rather than infer a kind.
 
 ## Contributing
 
