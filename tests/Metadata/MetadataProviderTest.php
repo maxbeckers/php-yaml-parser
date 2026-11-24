@@ -313,4 +313,71 @@ YAML;
         $this->assertSame('sequence', $parser->getMetadataProvider(false)->getResolvedNodeKind([0, 'copy', 'empty']));
         $this->assertSame('sequence', $parser->getMetadataProvider(true)->getResolvedNodeKind(['copy', 'empty']));
     }
+
+    public function testResolvedKindsForSingleAliasMerge(): void
+    {
+        $yaml = <<<'YAML'
+base: &base
+  emptyMap: {}
+  emptyList: []
+  nested: {list: [one, {}]}
+  overridden: []
+copy:
+  <<: *base
+  overridden: {}
+YAML;
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse($yaml);
+        $provider = $parser->getMetadataProvider();
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['copy', 'emptyMap']));
+        $this->assertSame('sequence', $provider->getResolvedNodeKind(['copy', 'emptyList']));
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['copy', 'nested', 'list', 1]));
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['copy', 'overridden']));
+        $this->assertNull($provider->getMetadata(['copy', 'emptyMap']));
+        $this->assertNull($provider->getNodeKind(['copy', 'emptyMap']));
+    }
+
+    public function testResolvedKindsRejectAmbiguousMerges(): void
+    {
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse("first: &v {item: {}}\ncopy: {<<: *v}\nsecond: &v {item: []}\n");
+        $this->assertNull($parser->getMetadataProvider()->getResolvedNodeKind(['copy', 'item']));
+
+        $parser->parse("first: &v {item: {}}\ncopy: {<<: *v}\nsecond: &v scalar\n");
+        $this->assertNull($parser->getMetadataProvider()->getResolvedNodeKind(['copy', 'item']));
+
+        $parser->parse("first: &v {item: {}}\ncopy: {<<: *v}\nsecond: {discarded: &v [], discarded: 1}\n");
+        $this->assertNull($parser->getMetadataProvider()->getResolvedNodeKind(['copy', 'item']));
+
+        $parser->parse("a: &a {item: {}}\nb: &b {item: []}\ncopy: {<<: *a, <<: *b}\n");
+        $this->assertNull($parser->getMetadataProvider()->getResolvedNodeKind(['copy', 'item']));
+
+        $parser->parse("a: &a {item: {}}\ncopy:\n  ? <<\n  : *a\n");
+        $this->assertNull($parser->getMetadataProvider()->getResolvedNodeKind(['copy', 'item']));
+    }
+
+    public function testResolvedKindsForMergeSequencesAndChains(): void
+    {
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse(<<<'YAML'
+first: &first {item: {}, onlyFirst: {nested: []}}
+second: &second {item: [], onlySecond: {}}
+middle: &middle {<<: *first, extra: []}
+copy:
+  <<: [*middle, *second]
+  extra: {}
+inline: {<<: [{a: {}}, {b: []}]}
+YAML);
+        $provider = $parser->getMetadataProvider();
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['copy', 'item']));
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['copy', 'onlySecond']));
+        $this->assertSame('sequence', $provider->getResolvedNodeKind(['copy', 'onlyFirst', 'nested']));
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['copy', 'extra']));
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['inline', 'a']));
+        $this->assertSame('sequence', $provider->getResolvedNodeKind(['inline', 'b']));
+        $this->assertNull($provider->getMetadata(['copy', 'item']));
+
+        $parser->parse("a: &a {item: {}}\nb: &bad {item: []}\ncopy: {<<: [*bad, *a]}\nc: &bad {item: []}\n");
+        $this->assertNull($parser->getMetadataProvider()->getResolvedNodeKind(['copy', 'item']));
+    }
 }

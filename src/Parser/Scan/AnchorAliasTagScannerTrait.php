@@ -29,6 +29,9 @@ trait AnchorAliasTagScannerTrait
             throw new ParserException("Invalid anchor: empty anchor name at line {$this->line}");
         }
         $anchorName = substr($this->yaml, $this->pos, $end);
+        if ($this->captureMetadata) {
+            $this->metadataAnchorCounts[$anchorName] = ($this->metadataAnchorCounts[$anchorName] ?? 0) + 1;
+        }
         $this->pos += $end;
         $this->skipSpaces();
 

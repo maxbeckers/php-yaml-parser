@@ -217,6 +217,9 @@ trait MappingScannerTrait
                     throw new ParserException("Invalid anchor: empty anchor name at line {$this->line}");
                 }
                 $anchorName = substr($this->yaml, $this->pos, $end);
+                if ($this->captureMetadata) {
+                    $this->metadataAnchorCounts[$anchorName] = ($this->metadataAnchorCounts[$anchorName] ?? 0) + 1;
+                }
                 $this->pos += $end;
                 $this->skipSpaces();
                 $c = $this->yaml[$this->pos] ?? '';
@@ -259,6 +262,9 @@ trait MappingScannerTrait
                     $explicitMetaTree = $this->captureMetadata ? $this->lastNodeMetadataTree : null;
                     foreach ($explicitPairs as $ek => $ev) {
                         if ($ek === '<<') {
+                            if ($this->captureMetadata) {
+                                $mappingMeta['<<'] = ['key' => null, 'value' => MetadataNode::scalar(null)];
+                            }
                             $this->mergeIntoMapping($mapping, $ev);
                         } else {
                             $mapping[$ek] = $ev;
@@ -439,6 +445,9 @@ trait MappingScannerTrait
                         throw new ParserException("Invalid anchor: empty anchor name at line {$this->line}");
                     }
                     $keyAnchor = substr($this->yaml, $this->pos, $anchorEnd);
+                    if ($this->captureMetadata) {
+                        $this->metadataAnchorCounts[$keyAnchor] = ($this->metadataAnchorCounts[$keyAnchor] ?? 0) + 1;
+                    }
                     $this->pos += $anchorEnd;
                     $this->skipSpaces();
                 }
@@ -915,6 +924,11 @@ trait MappingScannerTrait
         int $valueLine,
         int $valueColumn,
     ): void {
+        if ($key === '<<' && array_key_exists($key, $mappingMeta)) {
+            $mappingMeta[$key] = ['key' => $keyMetadata, 'value' => MetadataNode::scalar(null)];
+
+            return;
+        }
         $mappingMeta[$key] = [
             'key' => $keyMetadata,
             'value' => $this->metadataForLastParsedValue($valueLine, $valueColumn),
@@ -924,8 +938,8 @@ trait MappingScannerTrait
     private function mergeIntoMapping(array &$target, mixed $mergeValue): void
     {
         if (is_array($mergeValue) && array_is_list($mergeValue)) {
-            for ($i = count($mergeValue) - 1; $i >= 0; $i--) {
-                $this->mergeSingleMapping($target, $mergeValue[$i] ?? null);
+            foreach ($mergeValue as $item) {
+                $this->mergeSingleMapping($target, $item);
             }
 
             return;

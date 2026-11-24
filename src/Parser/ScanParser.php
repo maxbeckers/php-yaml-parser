@@ -61,6 +61,8 @@ final class ScanParser
     private bool $hasAnchorsOrAliases = false;
     /** @var array<string, mixed> */
     private array $anchors = [];
+    /** @var array<string, int> */
+    private array $metadataAnchorCounts = [];
     /** @var array<string, string> */
     private array $tagHandles = ['!!' => 'tag:yaml.org,2002:', '!' => '!'];
     /** @var array<string, bool> */
@@ -273,6 +275,12 @@ final class ScanParser
     public function getDocumentMetadataTrees(): array
     {
         return $this->documentMetadataTrees;
+    }
+
+    /** @return array<string, int> */
+    public function getMetadataAnchorCounts(): array
+    {
+        return $this->metadataAnchorCounts;
     }
 
     public function hasAnchorsOrAliases(): bool

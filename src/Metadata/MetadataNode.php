@@ -84,6 +84,17 @@ final class MetadataNode
         return $item instanceof self ? $item : null;
     }
 
+    /** @return list<self> */
+    public function getValueNodes(): array
+    {
+        $nodes = [];
+        foreach ($this->items as $item) {
+            $nodes[] = $item instanceof self ? $item : $item['value'];
+        }
+
+        return $nodes;
+    }
+
     public function withOwnMetadata(?NodeMetadata $ownMetadata): self
     {
         return new self($this->kind, $this->items, $ownMetadata);

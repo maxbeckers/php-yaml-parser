@@ -2,6 +2,7 @@
 
 namespace MaxBeckers\YamlParser\Tests;
 
+use MaxBeckers\YamlParser\Config\ParsingConfig;
 use MaxBeckers\YamlParser\YamlParser;
 use PHPUnit\Framework\TestCase;
 
@@ -86,13 +87,13 @@ YAML;
         $this->assertEquals(2, $yaml[6]['y']);
         $this->assertEquals(10, $yaml[6]['r']);
         $this->assertEquals('center/big', $yaml[6]['label']);
-        $this->assertEquals(0, $yaml[7]['x']);
+        $this->assertEquals(1, $yaml[7]['x']);
         $this->assertEquals(2, $yaml[7]['y']);
         $this->assertEquals(4, $yaml[7]['r']);
         $this->assertEquals('center/left', $yaml[7]['label']);
         $this->assertEquals(2, $yaml[8]['x']);
         $this->assertEquals(2, $yaml[8]['y']);
-        $this->assertEquals(1, $yaml[8]['r']);
+        $this->assertEquals(10, $yaml[8]['r']);
         $this->assertEquals('center/left/small', $yaml[8]['label']);
     }
 
@@ -118,7 +119,7 @@ YAML;
         $this->assertEquals('example.com', $yaml['server1']['host']);
     }
 
-    public function testParseYaml_withListMergeLastWins()
+    public function testParseYaml_withListMergeFirstWins()
     {
         $input = <<<'YAML'
 defaults: &default_settings
@@ -137,8 +138,33 @@ YAML;
 
         $this->assertInstanceOf(\ArrayObject::class, $yaml);
         $this->assertCount(3, $yaml);
-        $this->assertEquals(10, $yaml['server1']['retries']);
-        $this->assertEquals(20, $yaml['server1']['timeout']);
+        $this->assertEquals(3, $yaml['server1']['retries']);
+        $this->assertEquals(30, $yaml['server1']['timeout']);
         $this->assertEquals('example.com', $yaml['server1']['host']);
+    }
+
+    public function testMergeSequencePrecedenceAndExplicitNullInBothMetadataModes(): void
+    {
+        $input = <<<'YAML'
+first: &first {value: {}, nullValue: null, firstOnly: 1}
+second: &second {value: [], nullValue: 2, secondOnly: 2}
+before: {value: null, <<: [*first, *second]}
+after: {<<: [*first, *second], value: null}
+merged: {<<: [*first, *second]}
+YAML;
+        foreach ([false, true] as $preserveMetadata) {
+            $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: $preserveMetadata));
+            $result = $parser->parse($input);
+            foreach (['before', 'after'] as $name) {
+                $this->assertNull($result[$name]['value']);
+                $this->assertNull($result[$name]['nullValue']);
+                $this->assertSame(1, $result[$name]['firstOnly']);
+                $this->assertSame(2, $result[$name]['secondOnly']);
+            }
+            $this->assertNull($result['merged']['nullValue']);
+            if ($preserveMetadata) {
+                $this->assertSame('mapping', $parser->getMetadataProvider()->getResolvedNodeKind(['merged', 'value']));
+            }
+        }
     }
 }

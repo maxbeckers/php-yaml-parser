@@ -8,13 +8,17 @@ final class MetadataProvider
 {
     /** @var \SplObjectStorage<\ArrayObject, MetadataNode|false>|null */
     private ?\SplObjectStorage $anchoredNodes = null;
+    /** @var array<string, MetadataNode|false> */
+    private array $namedAnchors = [];
     /**
      * @param list<MetadataNode> $documentMetadataNodes one metadata tree per parsed document
+     * @param array<string, int> $anchorCounts occurrences in the parsed stream
      */
     public function __construct(
         private readonly array $documentMetadataNodes,
         private readonly bool $stripWrapperOnSingleItem = true,
         private readonly mixed $parsedValue = null,
+        private readonly array $anchorCounts = [],
     ) {
     }
 
@@ -49,7 +53,8 @@ final class MetadataProvider
 
     /**
      * Return the resolved value's kind when collection aliases retain object identity.
-     * Alias descendants have no syntactic source metadata at their alias location.
+     * Merge keys are followed when their sources and anchor names are unambiguous.
+     * Alias and merge descendants have no syntactic source metadata at their location.
      *
      * @return 'mapping'|'sequence'|'scalar'|null
      */
@@ -57,6 +62,10 @@ final class MetadataProvider
     {
         if ($this->anchoredNodes === null) {
             $this->anchoredNodes = new \SplObjectStorage();
+            $root = $this->getRootNodeForPublicValue();
+            if ($root !== null) {
+                $this->indexNamedAnchors($root);
+            }
             $this->indexAnchors($this->parsedValue, $this->getRootNodeForPublicValue());
         }
         $node = $this->getRootNodeForPublicValue();
@@ -70,7 +79,7 @@ final class MetadataProvider
             if (!array_key_exists($segment, $items)) {
                 return null;
             }
-            $node = $node->isMapping() ? $node->getMappingValueNode($segment)
+            $node = $node->isMapping() ? $this->resolvedMappingValueNode($node, $segment)
                 : ($node->isSequence() && $this->toIndex($segment) !== null ? $node->getSequenceItemNode($this->toIndex($segment)) : null);
             $value = $items[$segment];
         }
@@ -107,7 +116,10 @@ final class MetadataProvider
 
     private function indexAnchors(mixed $value, ?MetadataNode $node): void
     {
-        if ($node === null || $node->getOwnMetadata()?->getAlias() !== null || (!is_array($value) && !$value instanceof \ArrayObject)) {
+        if ($node === null || $node->getOwnMetadata()?->getAlias() !== null) {
+            return;
+        }
+        if (!is_array($value) && !$value instanceof \ArrayObject) {
             return;
         }
         if ($value instanceof \ArrayObject && $node->getOwnMetadata()?->getAnchor() !== null) {
@@ -123,6 +135,67 @@ final class MetadataProvider
                 : ($node->isSequence() && is_int($key) ? $node->getSequenceItemNode($key) : null);
             $this->indexAnchors($child, $childNode);
         }
+    }
+
+    private function indexNamedAnchors(MetadataNode $node): void
+    {
+        $name = $node->getOwnMetadata()?->getAnchor();
+        if ($name !== null) {
+            $this->namedAnchors[$name] = ($this->anchorCounts[$name] ?? 0) === 1
+                && !array_key_exists($name, $this->namedAnchors) ? $node : false;
+        }
+        foreach ($node->getValueNodes() as $child) {
+            $this->indexNamedAnchors($child);
+        }
+    }
+
+    private function resolvedMappingValueNode(MetadataNode $node, int|string $key): ?MetadataNode
+    {
+        $unknown = false;
+        $visited = new \SplObjectStorage();
+
+        return $this->findMergedValueNode($node, $key, $visited, $unknown);
+    }
+
+    /** @param \SplObjectStorage<MetadataNode, null> $visited */
+    private function findMergedValueNode(MetadataNode $node, int|string $key, \SplObjectStorage $visited, bool &$unknown): ?MetadataNode
+    {
+        $direct = $node->getMappingValueNode($key);
+        if ($direct !== null) {
+            return $direct;
+        }
+        if ($visited->contains($node)) {
+            $unknown = true;
+
+            return null;
+        }
+        $merge = $node->getMappingValueNode('<<');
+        if ($merge === null) {
+            return null;
+        }
+        $visited->attach($node);
+        try {
+            $sources = $merge->isSequence() ? $merge->getValueNodes() : [$merge];
+            foreach ($sources as $source) {
+                $name = $source->getOwnMetadata()?->getAlias();
+                if ($name !== null) {
+                    $source = $this->namedAnchors[$name] ?? null;
+                }
+                if (!$source instanceof MetadataNode || !$source->isMapping()) {
+                    $unknown = true;
+
+                    return null;
+                }
+                $result = $this->findMergedValueNode($source, $key, $visited, $unknown);
+                if ($result !== null || $unknown) {
+                    return $result;
+                }
+            }
+        } finally {
+            $visited->detach($node);
+        }
+
+        return null;
     }
 
     public function getKeyMetadata(array|string|int|null $path): ?NodeMetadata

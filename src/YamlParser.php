@@ -12,6 +12,8 @@ final class YamlParser
     private ParsingConfig $config;
     private TagRegistry $tagRegistry;
     private ?array $lastMetadataTrees = null;
+    /** @var array<string, int> */
+    private array $lastMetadataAnchorCounts = [];
     private mixed $lastMetadataValue = null;
 
     public function __construct(
@@ -41,6 +43,7 @@ final class YamlParser
 
         if ($this->config->preserveMetadata) {
             $this->lastMetadataTrees = $scanParser->getDocumentMetadataTrees();
+            $this->lastMetadataAnchorCounts = $scanParser->getMetadataAnchorCounts();
         }
 
         if ($wantsPlainArrays && $scanParser->hasAnchorsOrAliases()) {
@@ -203,6 +206,7 @@ final class YamlParser
             $this->lastMetadataTrees,
             $stripWrapperOnSingleItem,
             $this->unwrapSingleDocumentIfNeeded($this->lastMetadataValue, $stripWrapperOnSingleItem),
+            $this->lastMetadataAnchorCounts,
         );
     }
 
