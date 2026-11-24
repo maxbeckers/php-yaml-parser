@@ -6,12 +6,15 @@ use MaxBeckers\YamlParser\Node\NodeMetadata;
 
 final class MetadataProvider
 {
+    /** @var \SplObjectStorage<\ArrayObject, MetadataNode|false>|null */
+    private ?\SplObjectStorage $anchoredNodes = null;
     /**
      * @param list<MetadataNode> $documentMetadataNodes one metadata tree per parsed document
      */
     public function __construct(
         private readonly array $documentMetadataNodes,
         private readonly bool $stripWrapperOnSingleItem = true,
+        private readonly mixed $parsedValue = null,
     ) {
     }
 
@@ -42,6 +45,84 @@ final class MetadataProvider
         }
 
         return $node->getOwnMetadata() === null ? null : 'scalar';
+    }
+
+    /**
+     * Return the resolved value's kind when collection aliases retain object identity.
+     * Alias descendants have no syntactic source metadata at their alias location.
+     *
+     * @return 'mapping'|'sequence'|'scalar'|null
+     */
+    public function getResolvedNodeKind(array|string|int|null $path = []): ?string
+    {
+        if ($this->anchoredNodes === null) {
+            $this->anchoredNodes = new \SplObjectStorage();
+            $this->indexAnchors($this->parsedValue, $this->getRootNodeForPublicValue());
+        }
+        $node = $this->getRootNodeForPublicValue();
+        $value = $this->parsedValue;
+        foreach ($this->normalizePath($path) as $segment) {
+            $node = $this->resolvedNode($node, $value);
+            if ($node === null || (!is_array($value) && !$value instanceof \ArrayObject)) {
+                return null;
+            }
+            $items = $value instanceof \ArrayObject ? $value->getArrayCopy() : $value;
+            if (!array_key_exists($segment, $items)) {
+                return null;
+            }
+            $node = $node->isMapping() ? $node->getMappingValueNode($segment)
+                : ($node->isSequence() && $this->toIndex($segment) !== null ? $node->getSequenceItemNode($this->toIndex($segment)) : null);
+            $value = $items[$segment];
+        }
+        if ($node?->getOwnMetadata()?->getAlias() !== null && !is_array($value) && !$value instanceof \ArrayObject) {
+            return 'scalar';
+        }
+        $node = $this->resolvedNode($node, $value);
+        if ($node === null) {
+            return null;
+        }
+
+        return $node->isMapping() ? 'mapping' : ($node->isSequence() ? 'sequence' : ($node->getOwnMetadata() !== null ? 'scalar' : null));
+    }
+
+    private function resolvedNode(?MetadataNode $node, mixed $value): ?MetadataNode
+    {
+        if ($node === null) {
+            return null;
+        }
+        if ($value instanceof \ArrayObject && $this->anchoredNodes !== null
+            && $this->anchoredNodes->contains($value) && $this->anchoredNodes[$value] === false) {
+            return null;
+        }
+        if ($node->getOwnMetadata()?->getAlias() === null) {
+            return $node;
+        }
+        if (!$value instanceof \ArrayObject || $this->anchoredNodes === null || !$this->anchoredNodes->contains($value)) {
+            return null;
+        }
+        $resolved = $this->anchoredNodes[$value];
+
+        return $resolved instanceof MetadataNode ? $resolved : null;
+    }
+
+    private function indexAnchors(mixed $value, ?MetadataNode $node): void
+    {
+        if ($node === null || $node->getOwnMetadata()?->getAlias() !== null || (!is_array($value) && !$value instanceof \ArrayObject)) {
+            return;
+        }
+        if ($value instanceof \ArrayObject && $node->getOwnMetadata()?->getAnchor() !== null) {
+            // Reused collection anchors can resolve to the same object with different syntactic trees.
+            if ($this->anchoredNodes->contains($value)) {
+                $this->anchoredNodes[$value] = false;
+            } else {
+                $this->anchoredNodes[$value] = $node;
+            }
+        }
+        foreach ($value as $key => $child) {
+            $childNode = $node->isMapping() ? $node->getMappingValueNode($key)
+                : ($node->isSequence() && is_int($key) ? $node->getSequenceItemNode($key) : null);
+            $this->indexAnchors($child, $childNode);
+        }
     }
 
     public function getKeyMetadata(array|string|int|null $path): ?NodeMetadata

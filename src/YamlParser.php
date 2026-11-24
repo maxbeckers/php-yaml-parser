@@ -12,6 +12,7 @@ final class YamlParser
     private ParsingConfig $config;
     private TagRegistry $tagRegistry;
     private ?array $lastMetadataTrees = null;
+    private mixed $lastMetadataValue = null;
 
     public function __construct(
         bool $preferPlainArrays = false,
@@ -45,6 +46,10 @@ final class YamlParser
         if ($wantsPlainArrays && $scanParser->hasAnchorsOrAliases()) {
             $serialized = $this->toPlainArray($serialized);
         }
+        if ($this->config->preserveMetadata) {
+            $this->lastMetadataValue = $serialized;
+        }
+
         $serialized = $this->unwrapSingleDocumentIfNeeded($serialized, $stripWrapperOnSingleItem);
 
         return $wantsPlainArrays ? $serialized : $this->wrapArrayResult($serialized);
@@ -194,7 +199,11 @@ final class YamlParser
             throw new \LogicException('Metadata is not available. Enable ParsingConfig::preserveMetadata and parse before requesting metadata.');
         }
 
-        return new MetadataProvider($this->lastMetadataTrees, $stripWrapperOnSingleItem);
+        return new MetadataProvider(
+            $this->lastMetadataTrees,
+            $stripWrapperOnSingleItem,
+            $this->unwrapSingleDocumentIfNeeded($this->lastMetadataValue, $stripWrapperOnSingleItem),
+        );
     }
 
     public function getTagRegistry(): TagRegistry

@@ -267,4 +267,50 @@ YAML;
             $this->assertNull($provider->getNodeKind(['aliases', $index, 0]));
         }
     }
+
+    public function testResolvedKindsForAliasesPreserveSourceMetadata(): void
+    {
+        $yaml = <<<'YAML'
+base: &base {empty: {}, list: [one, {inner: []}]}
+copy: *base
+cyclic: &cycle {self: *cycle}
+scalar: &s hello
+alias: *s
+YAML;
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse($yaml);
+        $provider = $parser->getMetadataProvider();
+        $this->assertSame('mapping', $provider->getResolvedNodeKind('copy'));
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['copy', 'empty']));
+        $this->assertSame('sequence', $provider->getResolvedNodeKind(['copy', 'list']));
+        $this->assertSame('sequence', $provider->getResolvedNodeKind(['copy', 'list', 1, 'inner']));
+        $this->assertSame('mapping', $provider->getResolvedNodeKind(['cyclic', 'self', 'self']));
+        $this->assertSame('scalar', $provider->getResolvedNodeKind('alias'));
+        $this->assertNull($provider->getResolvedNodeKind(['copy', 'missing']));
+        $this->assertNull($provider->getMetadata(['copy', 'empty']));
+        $this->assertNull($provider->getNodeKind('copy'));
+    }
+
+    public function testResolvedKindsRejectAmbiguousCollectionAnchorRebindingAndPlainArrays(): void
+    {
+        $yaml = "first: &v {key: first}\nfirstAlias: *v\nsecond: &v [second]\nsecondAlias: *v\n";
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse($yaml);
+        $provider = $parser->getMetadataProvider();
+        foreach (['first', 'firstAlias', 'second', 'secondAlias'] as $name) {
+            $this->assertNull($provider->getResolvedNodeKind($name));
+        }
+
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true, returnPlainArrays: true));
+        $parser->parse("base: &v {}\ncopy: *v\n");
+        $this->assertNull($parser->getMetadataProvider()->getResolvedNodeKind('copy'));
+    }
+
+    public function testResolvedKindsHandleWrappersAndForwardAliases(): void
+    {
+        $parser = new YamlParser(config: new ParsingConfig(preserveMetadata: true));
+        $parser->parse("copy: *later\nbase: &later {empty: []}\n", false);
+        $this->assertSame('sequence', $parser->getMetadataProvider(false)->getResolvedNodeKind([0, 'copy', 'empty']));
+        $this->assertSame('sequence', $parser->getMetadataProvider(true)->getResolvedNodeKind(['copy', 'empty']));
+    }
 }

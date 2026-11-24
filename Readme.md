@@ -118,6 +118,13 @@ path or its kind is unavailable. It distinguishes empty mappings from empty
 sequences without changing parsed values. Alias nodes return `null` because
 their metadata does not currently include the resolved node's tree; callers
 that require exact shapes should reject such nodes rather than infer a kind.
+`getResolvedNodeKind()` also follows collection aliases when identity is
+available in the default `ArrayObject` output. It returns `null` for missing
+or ambiguous shapes, including aliases converted to plain arrays. Source
+metadata remains syntactic: descendants reached through an alias have no
+source location at the alias occurrence. Query the parsed value before
+mutating it. Reused collection anchor names can currently resolve
+ambiguously; the resolved-kind API returns `null` for those collections.
 
 ## Contributing
 
